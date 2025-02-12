@@ -15,7 +15,7 @@ FPS = 60
 font = pygame.font.Font(None, 36)
 
 # Grid setup - každá buňka je nyní seznam
-pocet_čtvercu_strana = 7
+pocet_čtvercu_strana = 5
 grid = [[[] for x in range(pocet_čtvercu_strana)] for y in range(pocet_čtvercu_strana)]
 cell_size = window_size // pocet_čtvercu_strana
 
@@ -64,7 +64,7 @@ def draw_grid():
     
     # Zobraz aktuálně vybraný obrázek
     text = font.render(f"Vybraný obrázek: {current_image}", True, black)
-    okno.blit(text, (10, window_size - 40))
+    okno.blit(text, (10, 10))
 
 def kliknuti(pos):
     x = pos[0] // cell_size
@@ -92,16 +92,13 @@ while True:
         elif udalost.type == pygame.KEYDOWN:
             if udalost.key == pygame.K_1:
                 current_image = 1
-                print("Vybrán obrázek 1 (hlava)")
             elif udalost.key == pygame.K_2:
                 current_image = 2
-                print("Vybrán obrázek 2 (block)")
             elif udalost.key == pygame.K_3:
                 current_image = 3
-                print("Vybrán obrázek 3 (motor)")
             elif udalost.key == pygame.K_4:
                 current_image = 4
-                print("Vybrán obrázek 4 (pneumatika)")
+                
             elif udalost.key == pygame.K_DELETE:  # Přidáno mazání všech obrázků v buňce
                 x, y = kliknuti(pygame.mouse.get_pos())
                 if 0 <= x < pocet_čtvercu_strana and 0 <= y < pocet_čtvercu_strana:
