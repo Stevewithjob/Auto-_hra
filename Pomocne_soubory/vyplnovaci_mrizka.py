@@ -1,12 +1,12 @@
 import pygame
-#import sys
+import sys
 
 # Inicializace Pygame
 pygame.init()
 
 # Nastavení okna
 WINDOW_SIZE = 800
-GRID_SIZE = 40  # Počet čtverců na každé straně
+GRID_SIZE = 10  # Počet čtverců na každé straně
 CELL_SIZE = WINDOW_SIZE // GRID_SIZE
 
 # Vytvoření okna
