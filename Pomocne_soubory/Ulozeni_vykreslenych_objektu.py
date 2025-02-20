@@ -1,52 +1,62 @@
 import pygame
+import sys
 
 pygame.init()
-screen = pygame.display.set_mode((800, 600))
+window_size = 800
+okno = pygame.display.set_mode((window_size,window_size))
+
 clock = pygame.time.Clock()
+
+pocet_čtvercu_strana = 5
+grid = [[[] for x in range(pocet_čtvercu_strana)] for y in range(pocet_čtvercu_strana)]
+cell_size = window_size // pocet_čtvercu_strana
+
+white = (255, 255, 255)
+black = (0, 0, 0)
+red = (255, 0, 0)
+
 
 def create_test_image():
     # Vytvoření průhledné surface
     surface = pygame.Surface((200, 200), pygame.SRCALPHA)
     
-    # Nakreslení červeného kruhu s průhledným pozadím
-    pygame.draw.circle(surface, (255, 0, 0, 255), (100, 100), 50)  # Plně neprůhledný červený kruh
-    # První parametr je surface, druhý je barva (R,G,B,A), třetí je obdélník (x,y,šířka,výška)
-    pygame.draw.ellipse(surface, (222, 200, 225, 255), (50, 40, 100, 40))
+   
+    # Draw squares and images
+    for y in range(pocet_čtvercu_strana):
+        for x in range(pocet_čtvercu_strana):
+            rect = pygame.Rect(x * cell_size, y * cell_size, cell_size, cell_size)
+            
+            # Vykresli všechny obrázky v buňce
+            for img_id in grid[y][x]:
+                if img_id in obrazky:
+                    okno.blit(obrazky[img_id], (x * cell_size, y * cell_size))
+                
+            # Draw grid lines
+            pygame.draw.rect(okno, black, rect, 1)
     # Uložení obrázku
     pygame.image.save(surface, "test_transparent.png")
     return surface
 
-def main():
-    running = True
+test_surface = create_test_image()
     
-    # Vytvoření testovacího obrázku
-    test_surface = create_test_image()
+# Pozice pro vykreslení
+pos_x = 300
+pos_y = 200
     
-    # Pozice pro vykreslení
-    pos_x = 300
-    pos_y = 200
-    
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
+while True:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
                 
         # Vykreslení šachovnicového pozadí pro demonstraci průhlednosti
-        screen.fill((255, 255, 255))  # Bílé pozadí
-        
-        # Vytvoření šachovnice
-        for x in range(0, 800, 50):
-            for y in range(0, 600, 50):
-                if (x + y) // 50 % 2 == 0:
-                    pygame.draw.rect(screen, (200, 200, 200), (x, y, 50, 50))
+    okno.fill((255, 255, 255))  # Bílé pozadí
         
         # Vykreslení našeho průhledného obrázku
-        screen.blit(test_surface, (pos_x, pos_y))
+    okno.blit(test_surface, (pos_x, pos_y))
         
-        pygame.display.flip()
-        clock.tick(60)
+    pygame.display.flip()
+    clock.tick(60)
 
-    pygame.quit()
+pygame.quit()
 
-if __name__ == "__main__":
-    main()
