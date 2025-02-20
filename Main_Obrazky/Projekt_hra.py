@@ -3,7 +3,6 @@ import sys
 import time
 
 pygame.init()
-
 # Window setup
 window_size = 800
 okno = pygame.display.set_mode((window_size, window_size))
@@ -14,7 +13,7 @@ FPS = 60
 # Font pro debugování
 font = pygame.font.Font(None, 36)
 
-# Grid setup - každá buňka je nyní seznam
+# Grid setup
 pocet_čtvercu_strana = 5
 grid = [[[] for x in range(pocet_čtvercu_strana)] for y in range(pocet_čtvercu_strana)]
 cell_size = window_size // pocet_čtvercu_strana
@@ -23,6 +22,9 @@ cell_size = window_size // pocet_čtvercu_strana
 white = (255, 255, 255)
 black = (0, 0, 0)
 red = (255, 0, 0)
+
+# States
+show_grid = True
 
 # Load and scale images
 def load_and_scale_image(path, size):
@@ -44,7 +46,22 @@ obrazky = {
 }
 
 # Image selection
-current_image = 1  # 1: hlava, 2: block, 3: motor, 4: pneumatika
+current_image = 1
+
+def create_transparent_screenshot():
+    # Vytvoření průhledné surface
+    transparent_surface = pygame.Surface((window_size, window_size), pygame.SRCALPHA)
+    
+    # Vykresli pouze obrázky (bez mřížky a UI)
+    for y in range(pocet_čtvercu_strana):
+        for x in range(pocet_čtvercu_strana):
+            for img_id in grid[y][x]:
+                if img_id in obrazky:
+                    transparent_surface.blit(obrazky[img_id], (x * cell_size, y * cell_size))
+    
+    # Uložení průhledného screenshotu
+    pygame.image.save(transparent_surface, "transparent_objects.png")
+    print("Průhledný screenshot uložen jako transparent_objects.png")
 
 def draw_grid():
     okno.fill(white)
@@ -58,7 +75,7 @@ def draw_grid():
             for img_id in grid[y][x]:
                 if img_id in obrazky:
                     okno.blit(obrazky[img_id], (x * cell_size, y * cell_size))
-                
+            
             # Draw grid lines
             pygame.draw.rect(okno, black, rect, 1)
     
@@ -80,6 +97,7 @@ while True:
         
         elif udalost.type == pygame.MOUSEBUTTONDOWN:
             x, y = kliknuti(pygame.mouse.get_pos())
+            
             if 0 <= x < pocet_čtvercu_strana and 0 <= y < pocet_čtvercu_strana:
                 if udalost.button == 1:  # Levé tlačítko - přidej obrázek
                     grid[y][x].append(current_image)
@@ -98,8 +116,9 @@ while True:
                 current_image = 3
             elif udalost.key == pygame.K_4:
                 current_image = 4
-                
-            elif udalost.key == pygame.K_DELETE:  # Přidáno mazání všech obrázků v buňce
+            elif udalost.key == pygame.K_p:  # Screenshot s průhledným pozadím
+                create_transparent_screenshot()
+            elif udalost.key == pygame.K_DELETE:
                 x, y = kliknuti(pygame.mouse.get_pos())
                 if 0 <= x < pocet_čtvercu_strana and 0 <= y < pocet_čtvercu_strana:
                     grid[y][x].clear()
