@@ -1,6 +1,5 @@
 import pygame
 import sys
-import time
 
 # Inicializace Pygame
 pygame.init()
@@ -17,6 +16,10 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GRAY = (150, 150, 150)
 RED = (255, 0, 0)
+GREEN = (0, 200, 0)
+BLUE = (0, 100, 255)
+DARK_GRAY = (98, 98, 98)
+LIGHT_BLUE = (64, 199, 238)
 
 # Fonty
 font = pygame.font.SysFont('Arial', 40)
@@ -39,7 +42,7 @@ def load_and_scale_image(path, size):
         surface.fill(RED)
         return surface
 
-# Images with proper scaling to cell size
+#Obrázky s poupravením
 obrazky = {
     1: load_and_scale_image("Hlava_hrac.png", (cell_size, cell_size)),
     2: load_and_scale_image("stavebni_block.png", (cell_size, cell_size)),
@@ -49,6 +52,8 @@ obrazky = {
 
 # Image selection
 current_image = 1
+
+závodní_plocha = load_and_scale_image("Závodní plocha.jpg", (5000,800))
 
 class Button:
     def __init__(self, text, x, y, width, height, color, hover_color):
@@ -73,21 +78,6 @@ class Button:
             return True
         self.current_color = self.color
         return False
-
-def create_transparent_screenshot():
-    # Vytvoření průhledné surface
-    transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-    
-    # Vykresli pouze obrázky (bez mřížky a UI)
-    for y in range(pocet_čtvercu_strana):
-        for x in range(pocet_čtvercu_strana):
-            for img_id in grid[y][x]:
-                if img_id in obrazky:
-                    transparent_surface.blit(obrazky[img_id], (x * cell_size, y * cell_size))
-    
-    # Uložení průhledného screenshotu
-    pygame.image.save(transparent_surface, "transparent_objects.png")
-    print("Průhledný screenshot uložen jako transparent_objects.png")
 
 def kliknuti(pos):
     x = pos[0] // cell_size
@@ -114,7 +104,7 @@ def draw_grid():
     text = debug_font.render(f"Vybraný obrázek: {current_image}", True, BLACK)
     screen.blit(text, (10, 10))
     
-    help_text = debug_font.render("Klávesy 1-4: Změna obrázku, P: Screenshot, DEL: Smazat, ESC: Zpět", True, BLACK)
+    help_text = debug_font.render("Klávesy 1-4: Změna obrázku, DEL: Smazat, ESC: Zpět", True, BLACK)
     screen.blit(help_text, (10, HEIGHT - 40))
 
 def main_menu():
@@ -126,10 +116,10 @@ def main_menu():
     # Hlavní menu smyčka
     running = True
     while running:
-        screen.fill(BLACK)
+        screen.fill(LIGHT_BLUE)
         
         # Vykreslení nadpisu
-        title = font.render("HLAVNÍ MENU", True, RED)
+        title = font.render("HLAVNÍ MENU", True, DARK_GRAY)
         title_rect = title.get_rect(center=(WIDTH/2, 100))
         screen.blit(title, title_rect)
         
@@ -162,8 +152,50 @@ def main_menu():
         
         pygame.display.update()
 
+def race_screen():
+    # Obrazovka pro závodění
+    running = True
+    back_button = Button("Zpět do Editoru", WIDTH/2 - 150, HEIGHT - 100, 300, 50, WHITE, GRAY)
+    
+    while running:
+        screen.fill(BLUE)  # Modrá barva pozadí pro závodní obrazovku
+        screen.blit(závodní_plocha, (0,0))
+            
+        mouse_pos = pygame.mouse.get_pos()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if back_button.is_hover(mouse_pos):
+                    running = False
+        
+        # Nadpis závodní obrazovky
+        race_title = font.render("ZÁVODNÍ PLOCHA", True, WHITE)
+        title_rect = race_title.get_rect(center=(WIDTH/2, 100))
+        screen.blit(race_title, title_rect)
+        
+        # Informační text
+        info_text = debug_font.render("Zde bude závodní hra", True, WHITE)
+        info_rect = info_text.get_rect(center=(WIDTH/2, HEIGHT/2))
+        screen.blit(info_text, info_rect)
+        
+        # Kontrola tlačítka
+        back_button.is_hover(mouse_pos)
+        back_button.draw(screen)
+        
+        pygame.display.update()
+        clock.tick(FPS)
+
 def game():
     global current_image
+    
+    # Vytvoření tlačítka Závodit
+    race_button = Button("ZÁVODIT", WIDTH - 150, HEIGHT - 100, 140, 50, GREEN, GRAY)
     
     # Hlavní herní smyčka s mřížkou pro vykreslování obrázků
     running = True
@@ -174,7 +206,15 @@ def game():
                 sys.exit()
                 
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                x, y = kliknuti(pygame.mouse.get_pos())
+                # Pozice myši při kliknutí
+                mouse_pos = pygame.mouse.get_pos()
+                
+                # Kliknutí na tlačítko Závodit
+                if race_button.is_hover(mouse_pos):
+                    race_screen()
+                    continue
+                
+                x, y = kliknuti(mouse_pos)
                 
                 if 0 <= x < pocet_čtvercu_strana and 0 <= y < pocet_čtvercu_strana:
                     if event.button == 1:  # Levé tlačítko - přidej obrázek
@@ -196,15 +236,22 @@ def game():
                     current_image = 3
                 elif event.key == pygame.K_4:
                     current_image = 4
-                elif event.key == pygame.K_p:  # Screenshot s průhledným pozadím
-                    create_transparent_screenshot()
                 elif event.key == pygame.K_DELETE:
                     x, y = kliknuti(pygame.mouse.get_pos())
                     if 0 <= x < pocet_čtvercu_strana and 0 <= y < pocet_čtvercu_strana:
                         grid[y][x].clear()
                         print(f"Smazány všechny obrázky na pozici [{x}, {y}]")
         
+        # Vykreslení mřížky
         draw_grid()
+        
+        # Zjištění pozice myši pro efekt hover na tlačítku
+        mouse_pos = pygame.mouse.get_pos()
+        race_button.is_hover(mouse_pos)
+        
+        # Vykreslení tlačítka Závodit
+        race_button.draw(screen)
+        
         pygame.display.update()
         clock.tick(FPS)
 
@@ -237,6 +284,7 @@ def options():
         back_button.draw(screen)
         
         pygame.display.update()
+        clock.tick(FPS)
 
 # Spuštění menu
 if __name__ == "__main__":
