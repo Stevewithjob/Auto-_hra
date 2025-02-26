@@ -212,6 +212,28 @@ def race_screen():
         pygame.display.update()
         clock.tick(FPS)
 
+# Funkce pro bezpečné snížení počtu obrázků
+def bezpecne_sniz_pocet(img_id):
+    global pocet_obrazku
+    if pocet_obrazku[img_id] > 0:
+        pocet_obrazku[img_id] -= 1
+        return True
+    return False
+
+# Funkce pro bezpečné zobrazení počtu obrázků
+def bezpecne_spocitej_obrazky():
+    global pocet_obrazku, grid
+    
+    # Resetování počtu obrázků
+    pocet_obrazku = {1: 0, 2: 0, 3: 0, 4: 0}
+    
+    # Spočítání aktuálního počtu každého typu obrázku v mřížce
+    for y in range(pocet_čtvercu_strana):
+        for x in range(pocet_čtvercu_strana):
+            for img_id in grid[y][x]:
+                if img_id in pocet_obrazku:
+                    pocet_obrazku[img_id] += 1
+
 def game():
     global current_image, pocet_obrazku
     
@@ -244,16 +266,38 @@ def game():
                     if event.button == 1:  # Levé tlačítko - přidej obrázek
                         # Kontrola jestli už nemáme maximální počet obrázků daného typu
                         if pocet_obrazku[current_image] < max_pocet_obrazku[current_image]:
-                            grid[y][x].append(current_image)
-                            pocet_obrazku[current_image] += 1
-                            print(f"Přidán obrázek {current_image} na pozici [{x}, {y}]")
+                            # Kontrola pravidel pro přidávání obrázků
+                            if current_image == 2:  # Stavební blok lze přidat kdykoliv
+                                grid[y][x].append(current_image)
+                                pocet_obrazku[current_image] += 1
+                                print(f"Přidán stavební blok na pozici [{x}, {y}]")
+                            else:
+                                # Kontrola, zda v buňce už není jiný obrázek než stavební blok
+                                non_block_images = [img for img in grid[y][x] if img != 2]
+                                if not non_block_images:  # Pokud v buňce není žádný jiný obrázek kromě bloků
+                                    grid[y][x].append(current_image)
+                                    pocet_obrazku[current_image] += 1
+                                    print(f"Přidán obrázek {current_image} na pozici [{x}, {y}]")
+                                else:
+                                    print(f"V buňce [{x}, {y}] již existuje jiný obrázek.")
                         else:
                             print(f"Nelze přidat další obrázek typu {current_image}, dosažen maximální počet.")
                     elif event.button == 3:  # Pravé tlačítko - odeber poslední obrázek
                         if grid[y][x]:  # Pokud jsou v buňce nějaké obrázky
-                            removed = grid[y][x].pop()
-                            pocet_obrazku[removed] -= 1
-                            print(f"Odebrán obrázek {removed} z pozice [{x}, {y}]")
+                            # Najdi poslední ne-blokový obrázek, pokud existuje
+                            non_block_indices = [i for i, img in enumerate(grid[y][x]) if img != 2]
+                            if non_block_indices:
+                                # Odeber poslední ne-blokový obrázek
+                                index = non_block_indices[-1]
+                                removed = grid[y][x].pop(index)
+                                # Bezpečně sníží počet obrázků
+                                bezpecne_sniz_pocet(removed)
+                                print(f"Odebrán obrázek {removed} z pozice [{x}, {y}]")
+                            elif grid[y][x]:  # Jinak odeber poslední blok
+                                removed = grid[y][x].pop()
+                                # Bezpečně sníží počet obrázků
+                                bezpecne_sniz_pocet(removed)
+                                print(f"Odebrán obrázek {removed} z pozice [{x}, {y}]")
             
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
@@ -271,7 +315,7 @@ def game():
                     if 0 <= x < pocet_čtvercu_strana and 0 <= y < pocet_čtvercu_strana:
                         # Aktualizace počtu obrázků před vymazáním
                         for img_id in grid[y][x]:
-                            pocet_obrazku[img_id] -= 1
+                            bezpecne_sniz_pocet(img_id)
                         grid[y][x].clear()
                         print(f"Smazány všechny obrázky na pozici [{x}, {y}]")
         
@@ -287,6 +331,9 @@ def game():
         
         pygame.display.update()
         clock.tick(FPS)
+        
+        # Pro jistotu pravidelně aktualizuj počty obrázků
+        bezpecne_spocitej_obrazky()
 
 def options():
     # Menu nastavení
