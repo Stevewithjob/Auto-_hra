@@ -27,7 +27,7 @@ small_font = pygame.font.SysFont('Arial', 30)
 debug_font = pygame.font.Font(None, 36)
 
 # Grid setup
-pocet_čtvercu_strana = 10
+pocet_čtvercu_strana = 5
 grid = [[[] for x in range(pocet_čtvercu_strana)] for y in range(pocet_čtvercu_strana)]
 cell_size = WIDTH // pocet_čtvercu_strana
 
