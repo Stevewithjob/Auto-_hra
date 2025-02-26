@@ -26,6 +26,14 @@ font = pygame.font.SysFont('Arial', 40)
 small_font = pygame.font.SysFont('Arial', 30)
 debug_font = pygame.font.Font(None, 36)
 
+#písničky
+pisnicky = ["Bad_piggies_theme.mp3", "SIGMA-BOY-PHONK-REMIX-.mp3"]
+aktualni_pisnicka = 0  
+is_playing = True 
+
+pygame.mixer.music.load(pisnicky[aktualni_pisnicka])
+pygame.mixer.music.play()
+
 # Grid setup
 pocet_čtvercu_strana = 5
 grid = [[[] for x in range(pocet_čtvercu_strana)] for y in range(pocet_čtvercu_strana)]
@@ -263,9 +271,11 @@ def options():
     # Menu nastavení
     running = True
     back_button = Button("Zpět", WIDTH/2 - 100, 400, 200, 50, WHITE, GRAY)
+    mute_button = Button("Mute", WIDTH/2 - 100, 300, 100, 50, WHITE, GRAY)
+    unmute_button = Button("Unmute", WIDTH/2 + 15, 300, 100, 50,WHITE, GRAY)
     
     while running:
-        screen.fill(BLACK)
+        screen.fill(BLUE)
         
         mouse_pos = pygame.mouse.get_pos()
         
@@ -277,8 +287,15 @@ def options():
                 if event.key == pygame.K_ESCAPE:
                     running = False
             if event.type == pygame.MOUSEBUTTONDOWN:
+                if mute_button.is_hover(mouse_pos):
+                    pygame.mixer.music.pause()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if unmute_button.is_hover(mouse_pos):
+                    pygame.mixer.music.unpause()
+            if event.type == pygame.MOUSEBUTTONDOWN:
                 if back_button.is_hover(mouse_pos):
                     running = False
+                    
         
         options_text = font.render("NASTAVENÍ", True, RED)
         text_rect = options_text.get_rect(center=(WIDTH/2, 100))
@@ -286,6 +303,10 @@ def options():
         
         back_button.is_hover(mouse_pos)
         back_button.draw(screen)
+        mute_button.is_hover(mouse_pos)
+        mute_button.draw(screen)
+        unmute_button.is_hover(mouse_pos)
+        unmute_button.draw(screen)
         
         pygame.display.update()
         clock.tick(FPS)
