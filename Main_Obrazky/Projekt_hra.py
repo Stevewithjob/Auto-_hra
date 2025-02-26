@@ -7,7 +7,7 @@ pygame.init()
 # Nastavení obrazovky
 WIDTH, HEIGHT = 800, 800
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Pygame Menu s Editorem Obrázků")
+pygame.display.set_caption("HELL YEAHHH")
 clock = pygame.time.Clock()
 FPS = 60
 
@@ -27,7 +27,7 @@ small_font = pygame.font.SysFont('Arial', 30)
 debug_font = pygame.font.Font(None, 36)
 
 # Grid setup
-pocet_čtvercu_strana = 5
+pocet_čtvercu_strana = 10
 grid = [[[] for x in range(pocet_čtvercu_strana)] for y in range(pocet_čtvercu_strana)]
 cell_size = WIDTH // pocet_čtvercu_strana
 
@@ -54,6 +54,8 @@ obrazky = {
 current_image = 1
 
 závodní_plocha = load_and_scale_image("Závodní plocha.jpg", (5000,800))
+závodní_plocha_x = 0
+závodní_plocha_y = 0
 
 class Button:
     def __init__(self, text, x, y, width, height, color, hover_color):
@@ -154,13 +156,16 @@ def main_menu():
 
 def race_screen():
     # Obrazovka pro závodění
+    global závodní_plocha_x,závodní_plocha_y
     running = True
     back_button = Button("Zpět do Editoru", WIDTH/2 - 150, HEIGHT - 100, 300, 50, WHITE, GRAY)
     
     while running:
         screen.fill(BLUE)  # Modrá barva pozadí pro závodní obrazovku
-        screen.blit(závodní_plocha, (0,0))
-            
+        screen.blit(závodní_plocha, (závodní_plocha_x, závodní_plocha_y))
+        
+        key = pygame.key.get_pressed()
+        
         mouse_pos = pygame.mouse.get_pos()
         
         for event in pygame.event.get():
@@ -173,16 +178,15 @@ def race_screen():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if back_button.is_hover(mouse_pos):
                     running = False
+                    
+            if key[pygame.K_RIGHT] == True:
+                závodní_plocha_x -= 4
+        
         
         # Nadpis závodní obrazovky
         race_title = font.render("ZÁVODNÍ PLOCHA", True, WHITE)
         title_rect = race_title.get_rect(center=(WIDTH/2, 100))
         screen.blit(race_title, title_rect)
-        
-        # Informační text
-        info_text = debug_font.render("Zde bude závodní hra", True, WHITE)
-        info_rect = info_text.get_rect(center=(WIDTH/2, HEIGHT/2))
-        screen.blit(info_text, info_rect)
         
         # Kontrola tlačítka
         back_button.is_hover(mouse_pos)
