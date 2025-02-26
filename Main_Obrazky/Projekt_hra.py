@@ -28,7 +28,7 @@ debug_font = pygame.font.Font(None, 36)
 
 #písničky
 pisnicky = ["Bad_piggies_theme.mp3", "SIGMA-BOY-PHONK-REMIX-.mp3"]
-aktualni_pisnicka = 1 
+aktualni_pisnicka = 1
 is_playing = True 
 
 pygame.mixer.music.load(pisnicky[aktualni_pisnicka])
@@ -197,7 +197,7 @@ def race_screen():
                     running = False
                     
             if key[pygame.K_RIGHT] == True:
-                závodní_plocha_x -= 4
+                závodní_plocha_x -= 10
         
         
         # Nadpis závodní obrazovky
@@ -340,7 +340,7 @@ def options():
     running = True
     back_button = Button("Zpět", WIDTH/2 - 100, 400, 200, 50, WHITE, GRAY)
     mute_button = Button("Mute", WIDTH/2 - 100, 300, 100, 50, WHITE, GRAY)
-    unmute_button = Button("Unmute", WIDTH/2 + 15, 300, 100, 50,WHITE, GRAY)
+    unmute_button = Button("Unmute", WIDTH/2, 300, 100, 50,WHITE, GRAY)
     
     while running:
         screen.fill(BLUE)
