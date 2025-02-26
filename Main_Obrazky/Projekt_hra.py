@@ -28,11 +28,11 @@ debug_font = pygame.font.Font(None, 36)
 
 #písničky
 pisnicky = ["Bad_piggies_theme.mp3", "SIGMA-BOY-PHONK-REMIX-.mp3"]
-aktualni_pisnicka = 0  
+aktualni_pisnicka = 1 
 is_playing = True 
 
 pygame.mixer.music.load(pisnicky[aktualni_pisnicka])
-pygame.mixer.music.play()
+pygame.mixer.music.play(-1)
 
 # Grid setup
 pocet_čtvercu_strana = 5
