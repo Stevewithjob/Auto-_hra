@@ -39,11 +39,11 @@ while run:
      
     key = pygame.key.get_pressed()
     if key[pygame.K_a] == True:
-        player.move_ip(-4, 0)
+        player.move_ip(-10, 0)
         current_player_img = auto_left
         
     elif key[pygame.K_d] == True:
-        player.move_ip(4, 0)
+        player.move_ip(10, 0)
         current_player_img = auto
         
     if not is_jumping:
