@@ -39,6 +39,10 @@ pocet_čtvercu_strana = 5
 grid = [[[] for x in range(pocet_čtvercu_strana)] for y in range(pocet_čtvercu_strana)]
 cell_size = WIDTH // pocet_čtvercu_strana
 
+# Omezení počtu obrázků
+pocet_obrazku = {1: 0, 2: 0, 3: 0, 4: 0}
+max_pocet_obrazku = {1: 1, 2: 5, 3: 1, 4: 2}
+
 # Load and scale images
 def load_and_scale_image(path, size):
     try:
@@ -113,6 +117,11 @@ def draw_grid():
     # Zobraz aktuálně vybraný obrázek
     text = debug_font.render(f"Vybraný obrázek: {current_image}", True, BLACK)
     screen.blit(text, (10, 10))
+    
+    # Zobrazit počet zbývajících obrázků
+    for i in range(1, 5):
+        count_text = debug_font.render(f"Obrázek {i}: {pocet_obrazku[i]}/{max_pocet_obrazku[i]}", True, BLACK)
+        screen.blit(count_text, (10, 40 + (i - 1) * 30))
     
     help_text = debug_font.render("Klávesy 1-4: Změna obrázku, DEL: Smazat, ESC: Zpět", True, BLACK)
     screen.blit(help_text, (10, HEIGHT - 40))
@@ -204,7 +213,10 @@ def race_screen():
         clock.tick(FPS)
 
 def game():
-    global current_image
+    global current_image, pocet_obrazku
+    
+    # Reset počítadla obrázků při vstupu do hry
+    pocet_obrazku = {1: 0, 2: 0, 3: 0, 4: 0}
     
     # Vytvoření tlačítka Závodit
     race_button = Button("ZÁVODIT", WIDTH - 150, HEIGHT - 100, 140, 50, GREEN, GRAY)
@@ -230,11 +242,17 @@ def game():
                 
                 if 0 <= x < pocet_čtvercu_strana and 0 <= y < pocet_čtvercu_strana:
                     if event.button == 1:  # Levé tlačítko - přidej obrázek
-                        grid[y][x].append(current_image)
-                        print(f"Přidán obrázek {current_image} na pozici [{x}, {y}]")
+                        # Kontrola jestli už nemáme maximální počet obrázků daného typu
+                        if pocet_obrazku[current_image] < max_pocet_obrazku[current_image]:
+                            grid[y][x].append(current_image)
+                            pocet_obrazku[current_image] += 1
+                            print(f"Přidán obrázek {current_image} na pozici [{x}, {y}]")
+                        else:
+                            print(f"Nelze přidat další obrázek typu {current_image}, dosažen maximální počet.")
                     elif event.button == 3:  # Pravé tlačítko - odeber poslední obrázek
                         if grid[y][x]:  # Pokud jsou v buňce nějaké obrázky
                             removed = grid[y][x].pop()
+                            pocet_obrazku[removed] -= 1
                             print(f"Odebrán obrázek {removed} z pozice [{x}, {y}]")
             
             elif event.type == pygame.KEYDOWN:
@@ -251,6 +269,9 @@ def game():
                 elif event.key == pygame.K_DELETE:
                     x, y = kliknuti(pygame.mouse.get_pos())
                     if 0 <= x < pocet_čtvercu_strana and 0 <= y < pocet_čtvercu_strana:
+                        # Aktualizace počtu obrázků před vymazáním
+                        for img_id in grid[y][x]:
+                            pocet_obrazku[img_id] -= 1
                         grid[y][x].clear()
                         print(f"Smazány všechny obrázky na pozici [{x}, {y}]")
         
@@ -289,11 +310,9 @@ def options():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if mute_button.is_hover(mouse_pos):
                     pygame.mixer.music.pause()
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if unmute_button.is_hover(mouse_pos):
+                elif unmute_button.is_hover(mouse_pos):
                     pygame.mixer.music.unpause()
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if back_button.is_hover(mouse_pos):
+                elif back_button.is_hover(mouse_pos):
                     running = False
                     
         
