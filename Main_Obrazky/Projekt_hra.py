@@ -1,5 +1,6 @@
 import pygame
 import sys
+import random
 
 # Inicializace Pygame
 pygame.init()
@@ -173,9 +174,32 @@ def main_menu():
 
 def race_screen():
     # Obrazovka pro závodění
-    global závodní_plocha_x,závodní_plocha_y
+    global závodní_plocha_x, závodní_plocha_y
     running = True
     back_button = Button("Zpět do Editoru", WIDTH/2 - 150, HEIGHT - 100, 300, 50, WHITE, GRAY)
+    
+    # Definuj rozměry pro menší obrázky
+    small_cell_size = 30  # Menší velikost obrázků
+    
+    # Vytvoř kopii mřížky pro závodní obrazovku
+    race_grid = [[[] for _ in range(pocet_čtvercu_strana)] for _ in range(pocet_čtvercu_strana)]
+    
+    # Zkopíruj původní mřížku
+    for y in range(pocet_čtvercu_strana):
+        for x in range(pocet_čtvercu_strana):
+            race_grid[y][x] = [img for img in grid[y][x]]
+    
+    # Hledání nejnižšího obrázku
+    def get_max_y():
+        max_y = 0
+        for y in range(pocet_čtvercu_strana):
+            for x in range(pocet_čtvercu_strana):
+                if race_grid[y][x]:
+                    for img_index, img_id in enumerate(race_grid[y][x]):
+                        # Určení aktuální Y pozice obrázku
+                        screen_y = 600 + (y * small_cell_size) + (img_index * (small_cell_size // 2))
+                        max_y = max(max_y, screen_y)
+        return max_y
     
     while running:
         screen.fill(BLUE)  # Modrá barva pozadí pro závodní obrazovku
@@ -199,6 +223,29 @@ def race_screen():
             if key[pygame.K_RIGHT] == True:
                 závodní_plocha_x -= 10
         
+        # Vykreslení modrého obdélníku
+        pygame.draw.rect(screen, BLUE, (0, 600, 200, 50))
+        
+        # Získání maximální Y pozice
+        max_y_position = get_max_y()
+        
+        # Posunutí obrázků tak, aby se dotýkaly modrého obdélníku
+        y_offset = max(0, max_y_position - 600 + 30)  # Posunutí obrázků nahoru nebo dolů
+        
+        # Vykreslení obrázků na modrém obdélníku se zachováním původní struktury
+        for y in range(pocet_čtvercu_strana):
+            for x in range(pocet_čtvercu_strana):
+                # Pokud má buňka nějaké obrázky
+                if race_grid[y][x]:
+                    for img_index, img_id in enumerate(race_grid[y][x]):
+                        # Zmenši obrázek
+                        small_img = pygame.transform.scale(obrazky[img_id], (small_cell_size, small_cell_size))
+                        
+                        # Umístění obrázků na modrém obdélníku se zachováním původní struktury mřížky
+                        screen_x = x * small_cell_size
+                        screen_y = 600 + (y * small_cell_size) + (img_index * (small_cell_size // 2)) - y_offset
+                        
+                        screen.blit(small_img, (screen_x, screen_y))
         
         # Nadpis závodní obrazovky
         race_title = font.render("ZÁVODNÍ PLOCHA", True, WHITE)
@@ -302,6 +349,7 @@ def game():
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
+                    
                 elif event.key == pygame.K_1:
                     current_image = 1
                 elif event.key == pygame.K_2:
@@ -310,6 +358,7 @@ def game():
                     current_image = 3
                 elif event.key == pygame.K_4:
                     current_image = 4
+                    
                 elif event.key == pygame.K_DELETE:
                     x, y = kliknuti(pygame.mouse.get_pos())
                     if 0 <= x < pocet_čtvercu_strana and 0 <= y < pocet_čtvercu_strana:
