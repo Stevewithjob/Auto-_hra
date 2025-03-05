@@ -374,8 +374,6 @@ def game():
         # Zjištění pozice myši pro efekt hover na tlačítku
         mouse_pos = pygame.mouse.get_pos()
         race_button.is_hover(mouse_pos)
-        
-        # Vykreslení tlačítka Závodit
         race_button.draw(screen)
         
         pygame.display.update()
