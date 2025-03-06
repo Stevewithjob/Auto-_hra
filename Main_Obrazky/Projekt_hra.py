@@ -30,10 +30,20 @@ debug_font = pygame.font.Font(None, 36)
 #písničky
 pisnicky = ["Bad_piggies_theme.mp3", "SIGMA-BOY-PHONK-REMIX-.mp3"]
 aktualni_pisnicka = 1
-is_playing = True 
+is_playing = True
+#správné načtení písniček
+Zvuk_ready = True
+try:
+    pygame.mixer.init()
+    print("zkuv funguje")
+except pygame.error as e:
+    Zvuk_ready = False
+    print(f"Chyba při inicializaci zvuku: {e}")
+    
+if Zvuk_ready:
+    pygame.mixer.music.load(pisnicky[aktualni_pisnicka])
+    pygame.mixer.music.play(-1)
 
-pygame.mixer.music.load(pisnicky[aktualni_pisnicka])
-pygame.mixer.music.play(-1)
 
 # Grid setup
 pocet_čtvercu_strana = 5
@@ -197,7 +207,7 @@ def race_screen():
                 if race_grid[y][x]:
                     for img_index, img_id in enumerate(race_grid[y][x]):
                         # Určení aktuální Y pozice obrázku
-                        screen_y = 600 + (y * small_cell_size) + (img_index * (small_cell_size // 2))
+                        screen_y = 600 + (y * small_cell_size)
                         max_y = max(max_y, screen_y)
         return max_y
     
@@ -220,11 +230,11 @@ def race_screen():
                 if back_button.is_hover(mouse_pos):
                     running = False
                     
-            if key[pygame.K_RIGHT] == True:
+        if key[pygame.K_RIGHT] == True:
                 závodní_plocha_x -= 10
         
         # Vykreslení modrého obdélníku
-        pygame.draw.rect(screen, BLUE, (0, 600, 200, 50))
+        #pygame.draw.rect(screen, BLUE, (0, 600, 200, 50))
         
         # Získání maximální Y pozice
         max_y_position = get_max_y()
@@ -243,7 +253,7 @@ def race_screen():
                         
                         # Umístění obrázků na modrém obdélníku se zachováním původní struktury mřížky
                         screen_x = x * small_cell_size
-                        screen_y = 600 + (y * small_cell_size) + (img_index * (small_cell_size // 2)) - y_offset
+                        screen_y = 600 + (y * small_cell_size) - y_offset
                         
                         screen.blit(small_img, (screen_x, screen_y))
         
@@ -403,9 +413,16 @@ def options():
                     running = False
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if mute_button.is_hover(mouse_pos):
-                    pygame.mixer.music.pause()
+                    try:
+                        pygame.mixer.music.pause()
+                    except pygame.error:
+                        print("nelze zastavit kvůli nefunkčnímu modulu")
                 elif unmute_button.is_hover(mouse_pos):
-                    pygame.mixer.music.unpause()
+                    try:
+                        pygame.mixer.music.unpause()
+                    except pygame.error:
+                        print("nelze pustit kvůli nefunkčnímu modulu")
+                        
                 elif back_button.is_hover(mouse_pos):
                     running = False
                     
