@@ -442,5 +442,5 @@ def options():
         clock.tick(FPS)
 
 # Spuštění menu
-if __name__ == "__main__":
+if True == True:
     main_menu()
