@@ -29,7 +29,7 @@ debug_font = pygame.font.Font(None, 36)
 
 #písničky
 pisnicky = ["Bad_piggies_theme.mp3", "SIGMA-BOY-PHONK-REMIX-.mp3"]
-aktualni_pisnicka = 1
+aktualni_pisnicka = 0
 is_playing = True
 #správné načtení písniček
 Zvuk_ready = True
@@ -76,7 +76,7 @@ obrazky = {
 # Image selection
 current_image = 1
 
-závodní_plocha = load_and_scale_image("Závodní plocha.jpg", (5000,800))
+závodní_plocha = load_and_scale_image("Závodní plocha.png", (5000,800))
 závodní_plocha_x = 0
 závodní_plocha_y = 0
 
@@ -163,7 +163,7 @@ def main_menu():
                 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if start_button.is_hover(mouse_pos):
-                    game()  # Spustit editor mřížky
+                    game()  # Spustit stavbu
                 if options_button.is_hover(mouse_pos):
                     options()  # Otevřít nastavení
                 if quit_button.is_hover(mouse_pos):
@@ -231,7 +231,7 @@ def race_screen():
                     running = False
                     
         if key[pygame.K_RIGHT] == True:
-                závodní_plocha_x -= 10
+                závodní_plocha_x -= 3
         
         # Vykreslení modrého obdélníku
         #pygame.draw.rect(screen, BLUE, (0, 600, 200, 50))
