@@ -206,6 +206,16 @@ def race_screen():
         for x in range(pocet_čtvercu_strana):
             race_grid[y][x] = [img for img in grid[y][x]]
     
+    # Kontrola, zda auto má motor (ID 3)
+    has_motor = False
+    for y in range(pocet_čtvercu_strana):
+        for x in range(pocet_čtvercu_strana):
+            if 3 in race_grid[y][x]:
+                has_motor = True
+                break
+        if has_motor:
+            break
+    
     # Hledání nejnižšího obrázku
     def get_max_y():
         max_y = 0
@@ -281,8 +291,8 @@ def race_screen():
                 except:
                     print("Nelze přehrát zvuk vítězství")
         
-        # Kontrola stisknutých kláves - jen pokud závod neskončil
-        if not race_completed:
+        # Kontrola stisknutých kláves - jen pokud závod neskončil a máme motor
+        if not race_completed and has_motor:
             if key[pygame.K_RIGHT]:
                 # Zrychlování
                 is_accelerating = True
@@ -329,7 +339,7 @@ def race_screen():
         if wheel_rotation_angle >= 360:
             wheel_rotation_angle %= 360
         
-        # Posunutí závodní plochy podle rychlosti, ale jen pokud jsme nedosáhli cíle
+        # Posunutí závodní plochy podle rychlosti, ale jen pokud jsme nedosáhli cíle a máme motor
         if not race_completed or závodní_plocha_x > finish_line_x:
             závodní_plocha_x -= car_speed
             
@@ -399,19 +409,27 @@ def race_screen():
             final_time_text = font.render(f"Váš čas: {race_time:.2f} s", True, (255, 215, 0))
             screen.blit(final_time_text, (WIDTH//2 - final_time_text.get_width()//2, 250))
         else:
-            # Zobrazení stavu jízdy
-            status_text = ""
-            status_color = WHITE
-            if is_accelerating:
-                status_text = "ZRYCHLOVÁNÍ!"
-                status_color = GREEN
-            elif is_braking:
-                status_text = "BRZDĚNÍ!"
-                status_color = RED
-            
-            if status_text:
-                state_text = small_font.render(status_text, True, status_color)
-                screen.blit(state_text, (10, 80))
+            # Zobrazení upozornění, pokud nemáme motor
+            if not has_motor:
+                no_motor_text = font.render("CHYBÍ MOTOR!", True, RED)
+                screen.blit(no_motor_text, (WIDTH//2 - no_motor_text.get_width()//2, 200))
+                
+                hint_text = small_font.render("Přidejte motor ke svému vozidlu", True, WHITE)
+                screen.blit(hint_text, (WIDTH//2 - hint_text.get_width()//2, 250))
+            else:
+                # Zobrazení stavu jízdy
+                status_text = ""
+                status_color = WHITE
+                if is_accelerating:
+                    status_text = "ZRYCHLOVÁNÍ!"
+                    status_color = GREEN
+                elif is_braking:
+                    status_text = "BRZDĚNÍ!"
+                    status_color = RED
+                
+                if status_text:
+                    state_text = small_font.render(status_text, True, status_color)
+                    screen.blit(state_text, (10, 80))
         
         # Nadpis závodní obrazovky
         race_title = font.render("ZÁVOD 1.", False, BLACK)
