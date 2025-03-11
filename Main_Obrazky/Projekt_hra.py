@@ -407,8 +407,8 @@ def race_screen():
                 screen.blit(state_text, (10, 80))
         
         # Nadpis závodní obrazovky
-        race_title = font.render("ZÁVODNÍ PLOCHA", True, WHITE)
-        title_rect = race_title.get_rect(center=(WIDTH/2, 100))
+        race_title = font.render("ZÁVOD 1.", False, BLACK)
+        title_rect = race_title.get_rect(center=(WIDTH/2, 50))
         screen.blit(race_title, title_rect)
         
         # Kontrola tlačítka
@@ -544,9 +544,19 @@ def game():
 def options():
     # Menu nastavení
     running = True
-    back_button = Button("Zpět", WIDTH/2 - 100, 400, 200, 50, WHITE, GRAY)
+    back_button = Button("Zpět", WIDTH/2 - 100, 450, 200, 50, WHITE, GRAY)
     mute_button = Button("Mute", WIDTH/2 - 100, 300, 100, 50, WHITE, GRAY)
-    unmute_button = Button("Unmute", WIDTH/2, 300, 100, 50,WHITE, GRAY)
+    unmute_button = Button("Unmute", WIDTH/2, 300, 100, 50, WHITE, GRAY)
+    
+    # Tlačítka pro ovládání hlasitosti
+    volume_up_button = Button("+", WIDTH/2 + 50, 350, 50, 50, WHITE, GRAY)
+    volume_down_button = Button("-", WIDTH/2 - 100, 350, 50, 50, WHITE, GRAY)
+    
+    # Aktuální hlasitost (0.0 až 1.0)
+    try:
+        current_volume = pygame.mixer.music.get_volume()
+    except pygame.error:
+        current_volume = 0.5  # Výchozí hodnota
     
     while running:
         screen.fill(BLUE)
@@ -571,14 +581,32 @@ def options():
                         pygame.mixer.music.unpause()
                     except pygame.error:
                         print("nelze pustit kvůli nefunkčnímu modulu")
+                
+                # Ovládání hlasitosti
+                elif volume_up_button.is_hover(mouse_pos):
+                    try:
+                        current_volume = min(1.0, current_volume + 0.1)  # Zvýšit o 10%, max 1.0
+                        pygame.mixer.music.set_volume(current_volume)
+                    except pygame.error:
+                        print("nelze změnit hlasitost kvůli nefunkčnímu modulu")
+                elif volume_down_button.is_hover(mouse_pos):
+                    try:
+                        current_volume = max(0.0, current_volume - 0.1)  # Snížit o 10%, min 0.0
+                        pygame.mixer.music.set_volume(current_volume)
+                    except pygame.error:
+                        print("nelze změnit hlasitost kvůli nefunkčnímu modulu")
                         
                 elif back_button.is_hover(mouse_pos):
                     running = False
-                    
         
         options_text = font.render("NASTAVENÍ", True, RED)
         text_rect = options_text.get_rect(center=(WIDTH/2, 100))
         screen.blit(options_text, text_rect)
+        
+        # Zobrazení aktuální hlasitosti
+        volume_text = font.render(f"Hlasitost: {int(current_volume * 100)}%", True, WHITE)
+        volume_rect = volume_text.get_rect(center=(WIDTH/2, 250))
+        screen.blit(volume_text, volume_rect)
         
         back_button.is_hover(mouse_pos)
         back_button.draw(screen)
@@ -586,6 +614,12 @@ def options():
         mute_button.draw(screen)
         unmute_button.is_hover(mouse_pos)
         unmute_button.draw(screen)
+        
+        # Vykreslení tlačítek pro hlasitost
+        volume_up_button.is_hover(mouse_pos)
+        volume_up_button.draw(screen)
+        volume_down_button.is_hover(mouse_pos)
+        volume_down_button.draw(screen)
         
         pygame.display.update()
         clock.tick(FPS)
