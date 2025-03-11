@@ -228,6 +228,22 @@ def race_screen():
                         max_y = max(max_y, screen_y)
         return max_y
     
+    # Funkce pro kontrolu, zda kola dotýkají úrovně y=600
+    def wheels_touch_ground():
+        for y in range(pocet_čtvercu_strana):
+            for x in range(pocet_čtvercu_strana):
+                # Kontrola, zda buňka obsahuje kolo (ID 4)
+                if 4 in race_grid[y][x]:
+                    # Vypočítat y-souřadnici tohoto kola na obrazovce
+                    wheel_y = 600 + (y * small_cell_size) - y_offset
+                    
+                    # Kontrola, zda spodní část kola dotýká nebo jde pod y=600
+                    wheel_bottom = wheel_y + small_cell_size
+                    if wheel_bottom >= 600:
+                        return True
+        # Žádná kola se nedotýkají země
+        return False
+    
     # Proměnné pro efekt rozjíždění
     car_speed = 0
     car_acceleration = 0.075
@@ -242,6 +258,7 @@ def race_screen():
     # Proměnné pro zobrazení stavu
     is_accelerating = False
     is_braking = False
+    wheels_not_touching = False
     
     # Parametry závodní trati
     track_length = 5000 # Délka závodní trati (šířka obrázku závodní_plocha)
@@ -264,6 +281,7 @@ def race_screen():
     while running:
         screen.fill(BLUE)  # Modrá barva pozadí pro závodní obrazovku
         screen.blit(závodní_plocha, (závodní_plocha_x, závodní_plocha_y))
+        random_color = rainbow_color_sin(pygame.time.get_ticks() / 1000)
         
         # Aktualizace časovače závodu
         if race_timer_active and not race_completed:
@@ -274,6 +292,7 @@ def race_screen():
         # Reset stavů
         is_accelerating = False
         is_braking = False
+        wheels_not_touching = False
         
         # Kontrola, zda jsme dosáhli cíle
         if závodní_plocha_x <= finish_line_x and not race_completed:
@@ -291,31 +310,48 @@ def race_screen():
                 except:
                     print("Nelze přehrát zvuk vítězství")
         
+        # Získání maximální Y pozice
+        max_y_position = get_max_y()
+        
+        # Posunutí obrázků tak, aby se dotýkaly modrého obdélníku
+        y_offset = max(0, max_y_position - 600 + 30)  # Posunutí obrázků nahoru nebo dolů
+        
+        # Kontrola, zda kola dotýkají země
+        wheels_touching = wheels_touch_ground()
+        
         # Kontrola stisknutých kláves - jen pokud závod neskončil a máme motor
         if not race_completed and has_motor:
             if key[pygame.K_RIGHT]:
-                # Zrychlování
-                is_accelerating = True
-                race_timer_active = True  # Spustíme časovač při prvním zrychlení
-                
-                if car_speed < max_car_speed:
-                    car_speed += car_acceleration
-                if car_speed > max_car_speed:
-                    car_speed = max_car_speed
+                if wheels_touching:
+                    # Zrychlování
+                    is_accelerating = True
+                    race_timer_active = True  # Spustíme časovač při prvním zrychlení
                     
-                # Zvyšujeme rychlost rotace kol
-                wheel_rotation_speed = 10 + car_speed * 2  # Závisí na rychlosti auta
+                    if car_speed < max_car_speed:
+                        car_speed += car_acceleration
+                    if car_speed > max_car_speed:
+                        car_speed = max_car_speed
+                        
+                    # Zvyšujeme rychlost rotace kol
+                    wheel_rotation_speed = 10 + car_speed * 2  # Závisí na rychlosti auta
+                else:
+                    # Kola nejsou na zemi
+                    wheels_not_touching = True
             
             elif key[pygame.K_LEFT]:
-                # Brzdění
-                is_braking = True
-                if car_speed > min_car_speed:
-                    car_speed -= car_deceleration
-                if car_speed < min_car_speed:
-                    car_speed = min_car_speed
-                    
-                # Kola se zpomalují při brzdění
-                wheel_rotation_speed = max(0, wheel_rotation_speed - 5)
+                if wheels_touching:
+                    # Brzdění
+                    is_braking = True
+                    if car_speed > min_car_speed:
+                        car_speed -= car_deceleration
+                    if car_speed < min_car_speed:
+                        car_speed = min_car_speed
+                        
+                    # Kola se zpomalují při brzdění
+                    wheel_rotation_speed = max(0, wheel_rotation_speed - 5)
+                else:
+                    # Kola nejsou na zemi
+                    wheels_not_touching = True
             
             else:
                 # Postupné zpomalení, když není stisknutá žádná klávesa
@@ -358,13 +394,8 @@ def race_screen():
                     running = False
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if back_button.is_hover(mouse_pos):
+                    závodní_plocha_x = 0
                     running = False
-        
-        # Získání maximální Y pozice
-        max_y_position = get_max_y()
-        
-        # Posunutí obrázků tak, aby se dotýkaly modrého obdélníku
-        y_offset = max(0, max_y_position - 600 + 30)  # Posunutí obrázků nahoru nebo dolů
         
         # Vykreslení auta (s efektem rotujících kol)
         for y in range(pocet_čtvercu_strana):
@@ -411,16 +442,19 @@ def race_screen():
         else:
             # Zobrazení upozornění, pokud nemáme motor
             if not has_motor:
-                no_motor_text = font.render("CHYBÍ MOTOR!", True, RED)
+                no_motor_text = font.render("CHYBÍ MOTOR!", True, random_color)
                 screen.blit(no_motor_text, (WIDTH//2 - no_motor_text.get_width()//2, 200))
                 
-                hint_text = small_font.render("Přidejte motor ke svému vozidlu", True, WHITE)
+                hint_text = small_font.render("Přidejte motor ke svému vozidlu", True, random_color)
                 screen.blit(hint_text, (WIDTH//2 - hint_text.get_width()//2, 250))
             else:
                 # Zobrazení stavu jízdy
                 status_text = ""
                 status_color = WHITE
-                if is_accelerating:
+                if wheels_not_touching:
+                    status_text = "KOLA NEJSOU NA ZEMI!"
+                    status_color = RED
+                elif is_accelerating:
                     status_text = "ZRYCHLOVÁNÍ!"
                     status_color = GREEN
                 elif is_braking:
