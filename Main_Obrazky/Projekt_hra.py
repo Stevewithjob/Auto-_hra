@@ -216,6 +216,16 @@ def race_screen():
         if has_motor:
             break
     
+    # Kontrola, zda auto má řidiče/hlavu
+    has_driver = False
+    for y in range(pocet_čtvercu_strana):
+        for x in range(pocet_čtvercu_strana):
+            if 1 in race_grid[y][x]:  # Předpokládám, že ID 1 je hlava/řidič
+                has_driver = True
+                break
+        if has_driver:
+            break
+    
     # Hledání nejnižšího obrázku
     def get_max_y():
         max_y = 0
@@ -319,8 +329,8 @@ def race_screen():
         # Kontrola, zda kola dotýkají země
         wheels_touching = wheels_touch_ground()
         
-        # Kontrola stisknutých kláves - jen pokud závod neskončil a máme motor
-        if not race_completed and has_motor:
+        # Kontrola stisknutých kláves - jen pokud závod neskončil, máme motor a řidiče
+        if not race_completed and has_motor and has_driver:
             if key[pygame.K_RIGHT]:
                 if wheels_touching:
                     # Zrychlování
@@ -375,7 +385,7 @@ def race_screen():
         if wheel_rotation_angle >= 360:
             wheel_rotation_angle %= 360
         
-        # Posunutí závodní plochy podle rychlosti, ale jen pokud jsme nedosáhli cíle a máme motor
+        # Posunutí závodní plochy podle rychlosti, ale jen pokud jsme nedosáhli cíle a máme motor a řidiče
         if not race_completed or závodní_plocha_x > finish_line_x:
             závodní_plocha_x -= car_speed
             
@@ -440,12 +450,18 @@ def race_screen():
             final_time_text = font.render(f"Váš čas: {race_time:.2f} s", True, (255, 215, 0))
             screen.blit(final_time_text, (WIDTH//2 - final_time_text.get_width()//2, 250))
         else:
-            # Zobrazení upozornění, pokud nemáme motor
+            # Zobrazení upozornění, pokud nemáme motor nebo řidiče
             if not has_motor:
                 no_motor_text = font.render("CHYBÍ MOTOR!", True, random_color)
                 screen.blit(no_motor_text, (WIDTH//2 - no_motor_text.get_width()//2, 200))
                 
                 hint_text = small_font.render("Přidejte motor ke svému vozidlu", True, random_color)
+                screen.blit(hint_text, (WIDTH//2 - hint_text.get_width()//2, 250))
+            elif not has_driver:
+                no_driver_text = font.render("CHYBÍ ŘIDIČ!", True, random_color)
+                screen.blit(no_driver_text, (WIDTH//2 - no_driver_text.get_width()//2, 200))
+                
+                hint_text = small_font.render("Přidejte hlavu ke svému vozidlu", True, random_color)
                 screen.blit(hint_text, (WIDTH//2 - hint_text.get_width()//2, 250))
             else:
                 # Zobrazení stavu jízdy
@@ -466,7 +482,7 @@ def race_screen():
                     screen.blit(state_text, (10, 80))
         
         # Nadpis závodní obrazovky
-        race_title = font.render("ZÁVOD 1.", False, BLACK)
+        race_title = font.render("ZÁVOD 1.", False, random_color)
         title_rect = race_title.get_rect(center=(WIDTH/2, 50))
         screen.blit(race_title, title_rect)
         
