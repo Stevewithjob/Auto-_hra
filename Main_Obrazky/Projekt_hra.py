@@ -80,6 +80,12 @@ závodní_plocha = load_and_scale_image("Závodní plocha.png", (5000,800))
 závodní_plocha_x = 0
 závodní_plocha_y = 0
 
+def rainbow_color_sin(time_passed):
+    r = int(127.5 * (math.sin(time_passed * 0.3) + 1))
+    g = int(127.5 * (math.sin(time_passed * 0.3 + 2.094) + 1))  # 2.094 = 2π/3
+    b = int(127.5 * (math.sin(time_passed * 0.3 + 4.188) + 1))  # 4.188 = 4π/3
+    return (r, g, b)
+
 class Button:
     def __init__(self, text, x, y, width, height, color, hover_color):
         self.text = text
@@ -146,10 +152,11 @@ def main_menu():
     # Hlavní menu smyčka
     running = True
     while running:
+        color = rainbow_color_sin(pygame.time.get_ticks() / 1000)
         screen.fill(LIGHT_BLUE)
         
         # Vykreslení nadpisu
-        title = font.render("HLAVNÍ MENU", True, DARK_GRAY)
+        title = font.render("HLAVNÍ MENU", True, color)
         title_rect = title.get_rect(center=(WIDTH/2, 100))
         screen.blit(title, title_rect)
         
@@ -213,7 +220,7 @@ def race_screen():
     
     # Proměnné pro efekt rozjíždění
     car_speed = 0
-    car_acceleration = 0.1
+    car_acceleration = 0.075
     car_deceleration = 0.2
     max_car_speed = 7.5
     min_car_speed = 0
@@ -559,6 +566,8 @@ def options():
         current_volume = 0.5  # Výchozí hodnota
     
     while running:
+        color = rainbow_color_sin(pygame.time.get_ticks() / 1000)
+        
         screen.fill(BLUE)
         
         mouse_pos = pygame.mouse.get_pos()
@@ -599,7 +608,7 @@ def options():
                 elif back_button.is_hover(mouse_pos):
                     running = False
         
-        options_text = font.render("NASTAVENÍ", True, RED)
+        options_text = font.render("NASTAVENÍ", True, color)
         text_rect = options_text.get_rect(center=(WIDTH/2, 100))
         screen.blit(options_text, text_rect)
         
