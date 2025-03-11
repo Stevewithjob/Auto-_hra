@@ -1,7 +1,7 @@
 import pygame
 import sys
 import random
-
+import math
 # Inicializace Pygame
 pygame.init()
 
@@ -211,11 +211,124 @@ def race_screen():
                         max_y = max(max_y, screen_y)
         return max_y
     
+    # Proměnné pro efekt rozjíždění
+    car_speed = 0
+    car_acceleration = 0.1
+    car_deceleration = 0.2
+    max_car_speed = 7.5
+    min_car_speed = 0
+    
+    # Proměnné pro rotaci kol
+    wheel_rotation_angle = 0
+    wheel_rotation_speed = 0  # Rychlost rotace kol
+    
+    # Proměnné pro zobrazení stavu
+    is_accelerating = False
+    is_braking = False
+    
+    # Parametry závodní trati
+    track_length = 5000 # Délka závodní trati (šířka obrázku závodní_plocha)
+    finish_line_x = -track_length + WIDTH  # X-pozice cílové čáry (konec trati)
+    race_completed = False
+    race_time = 0  # Čas závodu v sekundách
+    race_timer_active = False
+    finish_celebration_timer = 0
+    
+    # Načteme originální obrázek kola pro rotaci
+    original_wheel = None
+    try:
+        original_wheel = pygame.image.load("pneumatika.png")
+        original_wheel = pygame.transform.scale(original_wheel, (small_cell_size, small_cell_size))
+    except pygame.error:
+        print("Nelze načíst originální obrázek kola pro rotaci")
+        original_wheel = pygame.Surface((small_cell_size, small_cell_size))
+        original_wheel.fill(RED)
+    
     while running:
         screen.fill(BLUE)  # Modrá barva pozadí pro závodní obrazovku
         screen.blit(závodní_plocha, (závodní_plocha_x, závodní_plocha_y))
         
+        # Aktualizace časovače závodu
+        if race_timer_active and not race_completed:
+            race_time += 1/FPS
+        
         key = pygame.key.get_pressed()
+        
+        # Reset stavů
+        is_accelerating = False
+        is_braking = False
+        
+        # Kontrola, zda jsme dosáhli cíle
+        if závodní_plocha_x <= finish_line_x and not race_completed:
+            race_completed = True
+            car_speed = 0
+            wheel_rotation_speed = 0
+            # Spustíme časovač pro oslavnou animaci
+            finish_celebration_timer = 3  # 3 sekundy oslav
+            
+            # Zkusíme přehrát zvuk vítězství, pokud je k dispozici
+            if Zvuk_ready:
+                try:
+                    victory_sound = pygame.mixer.Sound("victory.wav")
+                    victory_sound.play()
+                except:
+                    print("Nelze přehrát zvuk vítězství")
+        
+        # Kontrola stisknutých kláves - jen pokud závod neskončil
+        if not race_completed:
+            if key[pygame.K_RIGHT]:
+                # Zrychlování
+                is_accelerating = True
+                race_timer_active = True  # Spustíme časovač při prvním zrychlení
+                
+                if car_speed < max_car_speed:
+                    car_speed += car_acceleration
+                if car_speed > max_car_speed:
+                    car_speed = max_car_speed
+                    
+                # Zvyšujeme rychlost rotace kol
+                wheel_rotation_speed = 10 + car_speed * 2  # Závisí na rychlosti auta
+            
+            elif key[pygame.K_LEFT]:
+                # Brzdění
+                is_braking = True
+                if car_speed > min_car_speed:
+                    car_speed -= car_deceleration
+                if car_speed < min_car_speed:
+                    car_speed = min_car_speed
+                    
+                # Kola se zpomalují při brzdění
+                wheel_rotation_speed = max(0, wheel_rotation_speed - 5)
+            
+            else:
+                # Postupné zpomalení, když není stisknutá žádná klávesa
+                if car_speed > 0:
+                    car_speed -= 0.05
+                    if car_speed < 0:
+                        car_speed = 0
+                
+                # Kola se postupně zpomalují
+                wheel_rotation_speed = max(0, wheel_rotation_speed - 1)
+        else:
+            # Pokud jsme v cíli a běží oslavný časovač
+            if finish_celebration_timer > 0:
+                finish_celebration_timer -= 1/FPS
+                
+                # Kola se zastaví postupně
+                wheel_rotation_speed = max(0, wheel_rotation_speed - 2)
+        
+        # Aktualizace úhlu rotace kol
+        wheel_rotation_angle -= wheel_rotation_speed
+        if wheel_rotation_angle >= 360:
+            wheel_rotation_angle %= 360
+        
+        # Posunutí závodní plochy podle rychlosti, ale jen pokud jsme nedosáhli cíle
+        if not race_completed or závodní_plocha_x > finish_line_x:
+            závodní_plocha_x -= car_speed
+            
+            # Zajistíme, že nepřejedeme za cílovou čáru
+            if závodní_plocha_x < finish_line_x:
+                závodní_plocha_x = finish_line_x
         
         mouse_pos = pygame.mouse.get_pos()
         
@@ -229,12 +342,6 @@ def race_screen():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if back_button.is_hover(mouse_pos):
                     running = False
-                    
-        if key[pygame.K_RIGHT] == True:
-                závodní_plocha_x -= 3
-        
-        # Vykreslení modrého obdélníku
-        #pygame.draw.rect(screen, BLUE, (0, 600, 200, 50))
         
         # Získání maximální Y pozice
         max_y_position = get_max_y()
@@ -242,20 +349,62 @@ def race_screen():
         # Posunutí obrázků tak, aby se dotýkaly modrého obdélníku
         y_offset = max(0, max_y_position - 600 + 30)  # Posunutí obrázků nahoru nebo dolů
         
-        # Vykreslení obrázků na modrém obdélníku se zachováním původní struktury
+        # Vykreslení auta (s efektem rotujících kol)
         for y in range(pocet_čtvercu_strana):
             for x in range(pocet_čtvercu_strana):
                 # Pokud má buňka nějaké obrázky
                 if race_grid[y][x]:
                     for img_index, img_id in enumerate(race_grid[y][x]):
-                        # Zmenši obrázek
-                        small_img = pygame.transform.scale(obrazky[img_id], (small_cell_size, small_cell_size))
-                        
-                        # Umístění obrázků na modrém obdélníku se zachováním původní struktury mřížky
+                        # Umístění obrázků se zachováním původní struktury mřížky
                         screen_x = x * small_cell_size
                         screen_y = 600 + (y * small_cell_size) - y_offset
                         
-                        screen.blit(small_img, (screen_x, screen_y))
+                        # Speciální zpracování pro kola (id 4) - rotace
+                        if img_id == 4 and original_wheel:
+                            # Vytvoření rotované kopie kola
+                            rotated_wheel = pygame.transform.rotate(original_wheel, wheel_rotation_angle)
+                            
+                            # Získání nového obdélníku rotovaného kola (aby bylo vystředěno)
+                            wheel_rect = rotated_wheel.get_rect(center=(screen_x + small_cell_size/2, 
+                                                                     screen_y + small_cell_size/2))
+                            
+                            # Vykreslení rotovaného kola
+                            screen.blit(rotated_wheel, wheel_rect.topleft)
+                        else:
+                            # Standardní vykreslení ostatních obrázků
+                            small_img = pygame.transform.scale(obrazky[img_id], (small_cell_size, small_cell_size))
+                            screen.blit(small_img, (screen_x, screen_y))
+        
+        # Zobrazení rychlosti a stavu
+        speed_text = small_font.render(f"Rychlost: {int(car_speed * 10)} km/h", True, WHITE)
+        screen.blit(speed_text, (10, 50))
+        
+        # Zobrazení času závodu
+        time_text = small_font.render(f"Čas: {race_time:.2f} s", True, WHITE)
+        screen.blit(time_text, (10, 120))
+        
+        # Zobrazení stavu závodu
+        if race_completed:
+            completed_text = font.render("CÍL DOSAŽEN!", True, (255, 215, 0))  # Zlatá barva
+            screen.blit(completed_text, (WIDTH//2 - completed_text.get_width()//2, 200))
+            
+            # Pokud máme finální čas, zobrazíme ho
+            final_time_text = font.render(f"Váš čas: {race_time:.2f} s", True, (255, 215, 0))
+            screen.blit(final_time_text, (WIDTH//2 - final_time_text.get_width()//2, 250))
+        else:
+            # Zobrazení stavu jízdy
+            status_text = ""
+            status_color = WHITE
+            if is_accelerating:
+                status_text = "ZRYCHLOVÁNÍ!"
+                status_color = GREEN
+            elif is_braking:
+                status_text = "BRZDĚNÍ!"
+                status_color = RED
+            
+            if status_text:
+                state_text = small_font.render(status_text, True, status_color)
+                screen.blit(state_text, (10, 80))
         
         # Nadpis závodní obrazovky
         race_title = font.render("ZÁVODNÍ PLOCHA", True, WHITE)
