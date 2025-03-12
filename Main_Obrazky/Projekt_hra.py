@@ -417,7 +417,6 @@ def race_screen():
                 # Kontrola kliknutí na tlačítko "Další Mapa" (pouze pokud je závod dokončen)
                 if race_completed and next_level_button.is_hover(mouse_pos):
                     # Zde by se přešlo na další úroveň
-                    race_screen2()
                     závodní_plocha_x = 0
                     race_completed = False
                     race_time = 0
