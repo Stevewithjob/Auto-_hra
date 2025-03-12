@@ -147,7 +147,8 @@ def main_menu():
     # Vytvoření tlačítek
     start_button = Button("Spustit Hru", WIDTH/2 - 100, 200, 200, 50, WHITE, GRAY)
     options_button = Button("Nastavení", WIDTH/2 - 100, 300, 200, 50, WHITE, GRAY)
-    quit_button = Button("Ukončit", WIDTH/2 - 100, 400, 200, 50, WHITE, GRAY)
+    quit_button = Button("Ukončit", WIDTH/2 - 100, 500, 200, 50, WHITE, GRAY)
+    help_button = Button("Nápověda",WIDTH/2 - 100, 400, 200, 50, WHITE, GRAY)
     
     # Hlavní menu smyčka
     running = True
@@ -173,6 +174,8 @@ def main_menu():
                     game()  # Spustit stavbu
                 if options_button.is_hover(mouse_pos):
                     options()  # Otevřít nastavení
+                if help_button.is_hover(mouse_pos):
+                    pomoc()
                 if quit_button.is_hover(mouse_pos):
                     pygame.quit()
                     sys.exit()
@@ -181,11 +184,13 @@ def main_menu():
         start_button.is_hover(mouse_pos)
         options_button.is_hover(mouse_pos)
         quit_button.is_hover(mouse_pos)
+        help_button.is_hover(mouse_pos)
         
         # Vykreslení tlačítek
         start_button.draw(screen)
         options_button.draw(screen)
         quit_button.draw(screen)
+        help_button.draw(screen)
         
         pygame.display.update()
 
@@ -194,6 +199,9 @@ def race_screen():
     global závodní_plocha_x, závodní_plocha_y
     running = True
     back_button = Button("Zpět do Editoru", WIDTH/2 - 150, HEIGHT - 100, 300, 50, WHITE, GRAY)
+    
+    # Nové tlačítko pro další mapu - bude viditelné až po dokončení závodu
+    next_level_button = Button("Další Mapa", WIDTH - 150, HEIGHT//2, 140, 50, GREEN, (50, 255, 50))
     
     # Definuj rozměry pro menší obrázky
     small_cell_size = 30  # Menší velikost obrázků
@@ -406,6 +414,16 @@ def race_screen():
                 if back_button.is_hover(mouse_pos):
                     závodní_plocha_x = 0
                     running = False
+                # Kontrola kliknutí na tlačítko "Další Mapa" (pouze pokud je závod dokončen)
+                if race_completed and next_level_button.is_hover(mouse_pos):
+                    # Zde by se přešlo na další úroveň
+                    race_screen2()
+                    závodní_plocha_x = 0
+                    race_completed = False
+                    race_time = 0
+                    race_timer_active = False
+                    # Zde by se mohlo načíst další závodní mapa nebo změnit obtížnost
+                    print("Přechod na další mapu!")
         
         # Vykreslení auta (s efektem rotujících kol)
         for y in range(pocet_čtvercu_strana):
@@ -449,6 +467,10 @@ def race_screen():
             # Pokud máme finální čas, zobrazíme ho
             final_time_text = font.render(f"Váš čas: {race_time:.2f} s", True, (255, 215, 0))
             screen.blit(final_time_text, (WIDTH//2 - final_time_text.get_width()//2, 250))
+            
+            # Zobrazíme tlačítko pro další mapu - pouze když je závod dokončen
+            next_level_button.is_hover(mouse_pos)
+            next_level_button.draw(screen)
         else:
             # Zobrazení upozornění, pokud nemáme motor nebo řidiče
             if not has_motor:
@@ -615,6 +637,89 @@ def game():
         
         # Pro jistotu pravidelně aktualizuj počty obrázků
         bezpecne_spocitej_obrazky()
+        
+def pomoc():
+    running = True
+    back_button = Button("Zpět", WIDTH/2 - 100, 700, 200, 50, WHITE, GRAY)
+    
+    # Barvy pro jednotlivé sekce
+    title_color = WHITE
+    section_color = LIGHT_BLUE
+    text_color = WHITE
+    
+    while running:
+        color = rainbow_color_sin(pygame.time.get_ticks() / 1000)
+        screen.fill(BLUE)
+        mouse_pos = pygame.mouse.get_pos()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if back_button.is_hover(mouse_pos):
+                    running = False
+        
+        # Nadpis
+        title = font.render("NÁPOVĚDA", True, color)
+        title_rect = title.get_rect(center=(WIDTH/2, 50))
+        screen.blit(title, title_rect)
+        
+        # Informace o stavění auta
+        build_title = small_font.render("Stavění auta:", True, section_color)
+        screen.blit(build_title, (50, 120))
+        
+        # Vysvětlení jednotlivých obrázků
+        img1_text = debug_font.render("Obrázek 1: Hlava (řidič) - lze umístit pouze 1×", True, text_color)
+        img2_text = debug_font.render("Obrázek 2: Stavební blok - lze umístit až 5×", True, text_color)
+        img3_text = debug_font.render("Obrázek 3: Motor - lze umístit pouze 1×", True, text_color)
+        img4_text = debug_font.render("Obrázek 4: Kolo - lze umístit až 2×", True, text_color)
+        
+        screen.blit(img1_text, (70, 160))
+        screen.blit(img2_text, (70, 190))
+        screen.blit(img3_text, (70, 220))
+        screen.blit(img4_text, (70, 250))
+        
+        # Vysvětlení ovládání při stavění
+        build_controls = small_font.render("Ovládání stavění:", True, section_color)
+        screen.blit(build_controls, (50, 300))
+        
+        controls1 = debug_font.render("Klávesy 1-4: Výběr typu obrázku", True, text_color)
+        controls2 = debug_font.render("Levé tlačítko myši: Umístění obrázku", True, text_color)
+        controls3 = debug_font.render("Pravé tlačítko myši: Odebrání posledního obrázku", True, text_color)
+        controls4 = debug_font.render("Klávesa DELETE: Smazání všech obrázků v buňce", True, text_color)
+        controls5 = debug_font.render("Klávesa ESC: Návrat do menu", True, text_color)
+        
+        screen.blit(controls1, (70, 340))
+        screen.blit(controls2, (70, 370))
+        screen.blit(controls3, (70, 400))
+        screen.blit(controls4, (70, 430))
+        screen.blit(controls5, (70, 460))
+        
+        # Vysvětlení ovládání při závodění
+        race_title = small_font.render("Ovládání závodu:", True, section_color)
+        screen.blit(race_title, (50, 510))
+        
+        race1 = debug_font.render("Pravá šipka: Zrychlení auta", True, text_color)
+        race2 = debug_font.render("Levá šipka: Brzdění", True, text_color)
+        race3 = debug_font.render("Pro úspěšný závod potřebujete motor a hlavu řidiče!", True, text_color)
+        race4 = debug_font.render("Kola by měla být umístěna tak, aby se dotýkala země.", True, text_color)
+        
+        screen.blit(race1, (70, 550))
+        screen.blit(race2, (70, 580))
+        screen.blit(race3, (70, 610))
+        screen.blit(race4, (70, 640))
+        
+        # Tlačítko pro návrat
+        back_button.is_hover(mouse_pos)
+        back_button.draw(screen)
+        
+        pygame.display.update()
+        clock.tick(FPS)
+    
 
 def options():
     # Menu nastavení
