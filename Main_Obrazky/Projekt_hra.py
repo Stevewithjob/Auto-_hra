@@ -261,39 +261,36 @@ def race_screen():
     car_y = 600  # Výchozí výška auta
     car_angle = 0  # Úhel naklonění auta
     
-    # Hledání nejnižšího obrázku
-    def get_max_y():
-        max_y = 0
-        for y in range(pocet_čtvercu_strana):
-            for x in range(pocet_čtvercu_strana):
-                if race_grid[y][x]:
-                    for img_index, img_id in enumerate(race_grid[y][x]):
-                        # Určení aktuální Y pozice obrázku
-                        screen_y = car_y + (y * small_cell_size)
-                        max_y = max(max_y, screen_y)
-        return max_y
+    # Najdi pozice všech kol v mřížce
+    wheel_positions = []
+    for y in range(pocet_čtvercu_strana):
+        for x in range(pocet_čtvercu_strana):
+            if 4 in race_grid[y][x]:  # ID 4 jsou kola
+                wheel_positions.append((x, y))
+    
+    # Najdi nejnižší pozici kola (kolo s největší y-souřadnicí)
+    lowest_wheel = None
+    if wheel_positions:
+        lowest_wheel = max(wheel_positions, key=lambda pos: pos[1])
     
     # Funkce pro kontrolu, zda kola dotýkají lajny
-    #def wheels_touch_ground():
-        #for y in range(pocet_čtvercu_strana):
-         #   for x in range(pocet_čtvercu_strana):
-                # Kontrola, zda buňka obsahuje kolo (ID 4)
-          #      if 4 in race_grid[y][x]:
-           #         # Vypočítat x-souřadnici tohoto kola na obrazovce
-            #        wheel_x = car_x + (x * small_cell_size)
-                    
-                    # Vypočítat y-souřadnici tohoto kola na obrazovce
-             #       wheel_y = car_y + (y * small_cell_size) - y_offset
-                    
-                    # Získat výšku lajny na pozici kola
-          #          line_height = get_line_height(wheel_x)
-                    
-                    # Kontrola, zda spodní část kola dotýká nebo jde pod výšku lajny
-          #          wheel_bottom = wheel_y + small_cell_size
-           #         if wheel_bottom >= line_height - 5 and wheel_bottom <= line_height + 5:
-            #            return True
-        # Žádná kola se nedotýkají lajny
-     #   return False
+    def wheels_touch_ground():
+        if not wheel_positions:
+            return False
+            
+        for wheel_x, wheel_y in wheel_positions:
+            # Vypočítat globální x-souřadnici tohoto kola na obrazovce
+            global_wheel_x = car_x + (wheel_x - pocet_čtvercu_strana//2) * small_cell_size
+            
+            # Získat výšku lajny na pozici kola
+            line_height = get_line_height(global_wheel_x)
+            
+            # Pokud některé kolo je v kontaktu s lajnou
+            wheel_bottom = car_y + wheel_y * small_cell_size + small_cell_size
+            if abs(wheel_bottom - line_height) < 5:
+                return True
+        
+        return False
     
     # Proměnné pro efekt rozjíždění
     car_speed = 0
@@ -309,7 +306,6 @@ def race_screen():
     # Proměnné pro zobrazení stavu
     is_accelerating = False
     is_braking = False
-    wheels_not_touching = False
     
     # Parametry závodní trati
     track_length = 10000 # Délka závodní trati (šířka obrázku závodní_plocha)
@@ -346,7 +342,6 @@ def race_screen():
         # Reset stavů
         is_accelerating = False
         is_braking = False
-        wheels_not_touching = False
         
         # Kontrola, zda jsme dosáhli cíle
         if závodní_plocha_x <= finish_line_x and not race_completed:
@@ -364,7 +359,7 @@ def race_screen():
                 except:
                     print("Nelze přehrát zvuk vítězství")
         
-        # Získání aktuální výšky lajny pod autem
+        # Získání aktuální výšky lajny pod středem auta
         current_line_height = get_line_height(car_x)
         
         # Přidáme aktuální výšku do seznamu předchozích výšek a odstraníme nejstarší
@@ -374,8 +369,16 @@ def race_screen():
         # Vypočítáme průměrnou výšku pro plynulejší pohyb
         avg_line_height = sum(prev_line_heights) / len(prev_line_heights)
         
-        # Aktualizace pozice auta podle výšky lajny
-        target_car_y = avg_line_height - small_cell_size
+        # Pokud máme nejnižší kolo, vypočítáme výšku auta tak, aby se toto kolo dotýkalo lajny
+        if lowest_wheel:
+            # Výpočet pozice středu auta tak, aby se nejnižší kolo dotýkalo lajny
+            wheel_x, wheel_y = lowest_wheel
+            # car_y je pozice středu auta, od které odečítáme, abychom dostali pozici kola
+            # small_cell_size je velikost jednoho pole, wheel_y je pozice kola v mřížce
+            target_car_y = avg_line_height - (wheel_y * small_cell_size + small_cell_size)
+        else:
+            # Pokud nemáme kola, použijeme výchozí logiku
+            target_car_y = avg_line_height - small_cell_size * pocet_čtvercu_strana / 2
         
         # Plynule přibližujeme auto k cílové výšce
         car_y += (target_car_y - car_y) * 0.1
@@ -383,52 +386,35 @@ def race_screen():
         # Vypočítáme úhel naklonění auta podle sklonu lajny
         if len(prev_line_heights) > 2:
             # Změna výšky za posledních několik snímků
-            height_diff = prev_line_heights[-1] - prev_line_heights[0]
+            height_diff = prev_line_heights[0] - prev_line_heights[-1]
             # Omezíme maximální úhel naklonění
             car_angle = max(-15, min(15, height_diff * 0.5))
-        
-        # Získání maximální Y pozice
-        max_y_position = get_max_y()
-        
-        # Posunutí obrázků tak, aby se dotýkaly lajny
-        y_offset = max(0, max_y_position - avg_line_height + small_cell_size)
-        
-        # Kontrola, zda kola dotýkají lajny
-        wheels_touching = True#wheels_touch_ground()
         
         # Kontrola stisknutých kláves - jen pokud závod neskončil, máme motor a řidiče
         if not race_completed and has_motor and has_driver:
             if key[pygame.K_RIGHT]:
-                if wheels_touching:
-                    # Zrychlování
-                    is_accelerating = True
-                    race_timer_active = True  # Spustíme časovač při prvním zrychlení
+                # Zrychlování
+                is_accelerating = True
+                race_timer_active = True  # Spustíme časovač při prvním zrychlení
+                
+                if car_speed < max_car_speed:
+                    car_speed += car_acceleration
+                if car_speed > max_car_speed:
+                    car_speed = max_car_speed
                     
-                    if car_speed < max_car_speed:
-                        car_speed += car_acceleration
-                    if car_speed > max_car_speed:
-                        car_speed = max_car_speed
-                        
-                    # Zvyšujeme rychlost rotace kol
-                    wheel_rotation_speed = 10 + car_speed * 2  # Závisí na rychlosti auta
-                else:
-                    # Kola nejsou na zemi
-                    wheels_not_touching = True
+                # Zvyšujeme rychlost rotace kol
+                wheel_rotation_speed = 10 + car_speed * 2  # Závisí na rychlosti auta
             
             elif key[pygame.K_LEFT]:
-                if wheels_touching:
-                    # Brzdění
-                    is_braking = True
-                    if car_speed > min_car_speed:
-                        car_speed -= car_deceleration
-                    if car_speed < min_car_speed:
-                        car_speed = min_car_speed
-                        
-                    # Kola se zpomalují při brzdění
-                    wheel_rotation_speed = max(0, wheel_rotation_speed - 5)
-                else:
-                    # Kola nejsou na zemi
-                    wheels_not_touching = True
+                # Brzdění
+                is_braking = True
+                if car_speed > min_car_speed:
+                    car_speed -= car_deceleration
+                if car_speed < min_car_speed:
+                    car_speed = min_car_speed
+                    
+                # Kola se zpomalují při brzdění
+                wheel_rotation_speed = max(0, wheel_rotation_speed - 5)
             
             else:
                 # Postupné zpomalení, když není stisknutá žádná klávesa
@@ -485,9 +471,9 @@ def race_screen():
         
         # Vykreslení auta (s efektem rotujících kol)
         # Vytvoříme povrch pro rotaci celého auta
-        
         car_surface = pygame.Surface((pocet_čtvercu_strana * small_cell_size, 
                                      pocet_čtvercu_strana * small_cell_size), pygame.SRCALPHA)
+        
         car_surface.fill((0, 0, 0, 0))  # Průhledný povrch
         
         # Vykreslíme auto na car_surface
@@ -529,6 +515,16 @@ def race_screen():
         # Vykreslíme šedou čáru pro debugování - ukazuje zjištěnou výšku lajny
         pygame.draw.circle(screen, (255, 0, 0), (car_x, avg_line_height), 5)
         
+        # Pro každé kolo vykreslíme bod jeho kontaktu s povrchem (pro debugování)
+        if wheel_positions:
+            for wheel_x, wheel_y in wheel_positions:
+                global_wheel_x = car_x + (wheel_x - pocet_čtvercu_strana//2) * small_cell_size
+                global_wheel_y = car_y + wheel_y * small_cell_size - small_cell_size/2
+                # Zjistíme výšku lajny pod tímto kolem
+                wheel_line_height = get_line_height(global_wheel_x)
+                # Vykreslíme zelený bod v místě kontaktu kola s lajnou
+                pygame.draw.circle(screen, (0, 255, 0), (global_wheel_x, wheel_line_height), 3)
+        
         # Zobrazení rychlosti a stavu
         speed_text = small_font.render(f"Rychlost: {int(car_speed * 10)} km/h", True, WHITE)
         screen.blit(speed_text, (10, 50))
@@ -567,10 +563,7 @@ def race_screen():
                 # Zobrazení stavu jízdy
                 status_text = ""
                 status_color = WHITE
-                if wheels_not_touching:
-                    status_text = "KOLA NEJSOU NA ZEMI!"
-                    status_color = RED
-                elif is_accelerating:
+                if is_accelerating:
                     status_text = "ZRYCHLOVÁNÍ!"
                     status_color = GREEN
                 elif is_braking:
