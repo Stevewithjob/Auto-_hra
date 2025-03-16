@@ -76,7 +76,7 @@ obrazky = {
 # Image selection
 current_image = 1
 
-závodní_plocha = load_and_scale_image("Trať2.png", (5000,800))
+závodní_plocha = load_and_scale_image("Trať2.png", (10000,800))
 závodní_plocha_x = 0
 závodní_plocha_y = 0
 
@@ -299,7 +299,7 @@ def race_screen():
     car_speed = 0
     car_acceleration = 0.075
     car_deceleration = 0.2
-    max_car_speed = 7.5
+    max_car_speed = 6
     min_car_speed = 0
     
     # Proměnné pro rotaci kol
@@ -312,7 +312,7 @@ def race_screen():
     wheels_not_touching = False
     
     # Parametry závodní trati
-    track_length = 5000 # Délka závodní trati (šířka obrázku závodní_plocha)
+    track_length = 10000 # Délka závodní trati (šířka obrázku závodní_plocha)
     finish_line_x = -track_length + WIDTH  # X-pozice cílové čáry (konec trati)
     race_completed = False
     race_time = 0  # Čas závodu v sekundách
