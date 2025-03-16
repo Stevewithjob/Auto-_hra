@@ -76,7 +76,7 @@ obrazky = {
 # Image selection
 current_image = 1
 
-závodní_plocha = load_and_scale_image("Závodní plocha.png", (5000,800))
+závodní_plocha = load_and_scale_image("Trať2.png", (5000,800))
 závodní_plocha_x = 0
 závodní_plocha_y = 0
 
@@ -196,7 +196,7 @@ def main_menu():
 
 def race_screen():
     # Obrazovka pro závodění
-    global závodní_plocha, závodní_plocha_x, závodní_plocha_y
+    global závodní_plocha_x, závodní_plocha_y
     running = True
     back_button = Button("Zpět do Editoru", WIDTH/2 - 150, HEIGHT - 100, 300, 50, WHITE, GRAY)
     
@@ -213,64 +213,6 @@ def race_screen():
     for y in range(pocet_čtvercu_strana):
         for x in range(pocet_čtvercu_strana):
             race_grid[y][x] = [img for img in grid[y][x]]
-    
-    # Vytvoření vlnité čáry
-    def generate_wavy_line(width, height):
-    # Vytvoření povrchu pro závodní plochu
-        track_surface = pygame.Surface((width, height), pygame.SRCALPHA)
-    
-    # Generování bodů nepravidelné vlnité křivky
-        points = []
-        center_y = 600
-    
-    # Několik různých frekvencí a amplitud pro složitější vzor
-        frequencies = [0.001, 0.0025, 0.004]
-        amplitudes = [40, 25, 15]
-    
-    # Náhodné perturbace pro nepravidelnost
-        random_offsets = []
-        for x in range(0, width, 100):
-            random_offsets.append(random.randint(-30, 30))
-    
-        for x in range(0, width, 5):
-        # Základní sinusová vlna
-            y = center_y
-        
-        # Přidání několika sinusových vln s různými frekvencemi
-            for freq, amp in zip(frequencies, amplitudes):
-                y += amp * math.sin(x * freq)
-        
-        # Přidání náhodné perturbace
-            section = x // 100
-            next_section = (section + 1) % len(random_offsets)
-            section_progress = (x % 100) / 100.0
-        
-        # Interpolace mezi dvěma náhodnými body pro plynulost
-            if section < len(random_offsets):
-                random_offset = random_offsets[section] * (1 - section_progress) + random_offsets[next_section] * section_progress
-                y += random_offset
-        
-            points.append((x, y))
-    
-    # Vykreslení vlnité čáry
-        if len(points) >= 2:
-            pygame.draw.lines(track_surface, (0, 0, 0), False, points, 3)
-    
-    # Vykreslení startovní čáry
-        pygame.draw.line(track_surface, (255, 0, 0), (50, center_y - 50), (50, center_y + 50), 5)
-    
-    # Vykreslení cílové čáry
-        finish_x = width - 100
-        pygame.draw.line(track_surface, (0, 0, 255), (finish_x, center_y - 50), (finish_x, center_y + 50), 5)
-    
-        return track_surface
-    
-    # Generování trati
-    track_length = 8000  # Délka závodní trati (šířka obrázku závodní_plocha)
-    track_height = 800   # Výška závodní trati
-    závodní_plocha = generate_wavy_line(track_length, track_height)
-    závodní_plocha_x = 0
-    závodní_plocha_y = HEIGHT//2 - track_height//2  # Pozice trati na středu obrazovky
     
     # Kontrola, zda auto má motor (ID 3)
     has_motor = False
@@ -292,6 +234,33 @@ def race_screen():
         if has_driver:
             break
     
+    # Funkce pro detekci výšky šedé lajny na aktuální x-pozici
+    def get_line_height(x_position):
+        # Převod globální x-pozice na pozici v rámci obrázku závodní_plocha
+        local_x = int(x_position - závodní_plocha_x)
+        
+        # Kontrola, zda je x_position v platném rozsahu
+        if local_x < 0 or local_x >= závodní_plocha.get_width():
+            return 600  # Výchozí výška
+        
+        # Projdeme sloupec pixelů odshora dolů, hledáme šedou barvu (lajnu)
+        for y in range(závodní_plocha.get_height()):
+            # Získání barvy pixelu
+            try:
+                color = závodní_plocha.get_at((local_x, y))
+                # Kontrola, zda je pixel šedý (přibližně)
+                if abs(color[0] - color[1]) < 10 and abs(color[1] - color[2]) < 10 and 50 < color[0] < 150:
+                    return y + závodní_plocha_y  # Vrátíme globální y-pozici
+            except IndexError:
+                pass  # Ignorujeme chyby mimo rozsah
+        
+        return 600  # Pokud nenajdeme šedou barvu, vrátíme výchozí výšku
+    
+    # Proměnné pro sledování polohy auta
+    car_x = WIDTH // 2  # Auto zůstává horizontálně ve středu obrazovky
+    car_y = 600  # Výchozí výška auta
+    car_angle = 0  # Úhel naklonění auta
+    
     # Hledání nejnižšího obrázku
     def get_max_y():
         max_y = 0
@@ -300,25 +269,31 @@ def race_screen():
                 if race_grid[y][x]:
                     for img_index, img_id in enumerate(race_grid[y][x]):
                         # Určení aktuální Y pozice obrázku
-                        screen_y = 600 + (y * small_cell_size)
+                        screen_y = car_y + (y * small_cell_size)
                         max_y = max(max_y, screen_y)
         return max_y
     
-    # Funkce pro kontrolu, zda kola dotýkají úrovně y=600
-    def wheels_touch_ground():
-        for y in range(pocet_čtvercu_strana):
-            for x in range(pocet_čtvercu_strana):
+    # Funkce pro kontrolu, zda kola dotýkají lajny
+    #def wheels_touch_ground():
+        #for y in range(pocet_čtvercu_strana):
+         #   for x in range(pocet_čtvercu_strana):
                 # Kontrola, zda buňka obsahuje kolo (ID 4)
-                if 4 in race_grid[y][x]:
-                    # Vypočítat y-souřadnici tohoto kola na obrazovce
-                    wheel_y = 600 + (y * small_cell_size) - y_offset
+          #      if 4 in race_grid[y][x]:
+           #         # Vypočítat x-souřadnici tohoto kola na obrazovce
+            #        wheel_x = car_x + (x * small_cell_size)
                     
-                    # Kontrola, zda spodní část kola dotýká nebo jde pod y=600
-                    wheel_bottom = wheel_y + small_cell_size
-                    if wheel_bottom >= 600:
-                        return True
-        # Žádná kola se nedotýkají země
-        return False
+                    # Vypočítat y-souřadnici tohoto kola na obrazovce
+             #       wheel_y = car_y + (y * small_cell_size) - y_offset
+                    
+                    # Získat výšku lajny na pozici kola
+          #          line_height = get_line_height(wheel_x)
+                    
+                    # Kontrola, zda spodní část kola dotýká nebo jde pod výšku lajny
+          #          wheel_bottom = wheel_y + small_cell_size
+           #         if wheel_bottom >= line_height - 5 and wheel_bottom <= line_height + 5:
+            #            return True
+        # Žádná kola se nedotýkají lajny
+     #   return False
     
     # Proměnné pro efekt rozjíždění
     car_speed = 0
@@ -337,6 +312,7 @@ def race_screen():
     wheels_not_touching = False
     
     # Parametry závodní trati
+    track_length = 5000 # Délka závodní trati (šířka obrázku závodní_plocha)
     finish_line_x = -track_length + WIDTH  # X-pozice cílové čáry (konec trati)
     race_completed = False
     race_time = 0  # Čas závodu v sekundách
@@ -352,6 +328,9 @@ def race_screen():
         print("Nelze načíst originální obrázek kola pro rotaci")
         original_wheel = pygame.Surface((small_cell_size, small_cell_size))
         original_wheel.fill(RED)
+    
+    # Sledování předchozích výšek lajny pro plynulý přechod
+    prev_line_heights = [600] * 10
     
     while running:
         screen.fill(BLUE)  # Modrá barva pozadí pro závodní obrazovku
@@ -385,14 +364,37 @@ def race_screen():
                 except:
                     print("Nelze přehrát zvuk vítězství")
         
+        # Získání aktuální výšky lajny pod autem
+        current_line_height = get_line_height(car_x)
+        
+        # Přidáme aktuální výšku do seznamu předchozích výšek a odstraníme nejstarší
+        prev_line_heights.append(current_line_height)
+        prev_line_heights.pop(0)
+        
+        # Vypočítáme průměrnou výšku pro plynulejší pohyb
+        avg_line_height = sum(prev_line_heights) / len(prev_line_heights)
+        
+        # Aktualizace pozice auta podle výšky lajny
+        target_car_y = avg_line_height - small_cell_size
+        
+        # Plynule přibližujeme auto k cílové výšce
+        car_y += (target_car_y - car_y) * 0.1
+        
+        # Vypočítáme úhel naklonění auta podle sklonu lajny
+        if len(prev_line_heights) > 2:
+            # Změna výšky za posledních několik snímků
+            height_diff = prev_line_heights[-1] - prev_line_heights[0]
+            # Omezíme maximální úhel naklonění
+            car_angle = max(-15, min(15, height_diff * 0.5))
+        
         # Získání maximální Y pozice
         max_y_position = get_max_y()
         
-        # Posunutí obrázků tak, aby se dotýkaly modrého obdélníku
-        y_offset = max(0, max_y_position - 600 + 30)  # Posunutí obrázků nahoru nebo dolů
+        # Posunutí obrázků tak, aby se dotýkaly lajny
+        y_offset = max(0, max_y_position - avg_line_height + small_cell_size)
         
-        # Kontrola, zda kola dotýkají země
-        wheels_touching = wheels_touch_ground()
+        # Kontrola, zda kola dotýkají lajny
+        wheels_touching = True#wheels_touch_ground()
         
         # Kontrola stisknutých kláves - jen pokud závod neskončil, máme motor a řidiče
         if not race_completed and has_motor and has_driver:
@@ -482,13 +484,21 @@ def race_screen():
                     print("Přechod na další mapu!")
         
         # Vykreslení auta (s efektem rotujících kol)
+        # Vytvoříme povrch pro rotaci celého auta
+        
+        car_surface = pygame.Surface((pocet_čtvercu_strana * small_cell_size, 
+                                     pocet_čtvercu_strana * small_cell_size), pygame.SRCALPHA)
+        car_surface.fill((0, 0, 0, 0))  # Průhledný povrch
+        
+        # Vykreslíme auto na car_surface
         for y in range(pocet_čtvercu_strana):
             for x in range(pocet_čtvercu_strana):
                 # Pokud má buňka nějaké obrázky
                 if race_grid[y][x]:
                     for img_index, img_id in enumerate(race_grid[y][x]):
-                        screen_x = x * small_cell_size
-                        screen_y = 600 + (y * small_cell_size) - y_offset
+                        # Umístění obrázků se zachováním původní struktury mřížky
+                        local_x = x * small_cell_size
+                        local_y = y * small_cell_size
                         
                         # Speciální zpracování pro kola (id 4) - rotace
                         if img_id == 4 and original_wheel:
@@ -496,15 +506,28 @@ def race_screen():
                             rotated_wheel = pygame.transform.rotate(original_wheel, wheel_rotation_angle)
                             
                             # Získání nového obdélníku rotovaného kola (aby bylo vystředěno)
-                            wheel_rect = rotated_wheel.get_rect(center=(screen_x + small_cell_size/2, 
-                                                                     screen_y + small_cell_size/2))
+                            wheel_rect = rotated_wheel.get_rect(center=(local_x + small_cell_size/2, 
+                                                                     local_y + small_cell_size/2))
                             
                             # Vykreslení rotovaného kola
-                            screen.blit(rotated_wheel, wheel_rect.topleft)
+                            car_surface.blit(rotated_wheel, wheel_rect.topleft)
                         else:
                             # Standardní vykreslení ostatních obrázků
                             small_img = pygame.transform.scale(obrazky[img_id], (small_cell_size, small_cell_size))
-                            screen.blit(small_img, (screen_x, screen_y))
+                            car_surface.blit(small_img, (local_x, local_y))
+        
+        # Rotujeme celé auto podle sklonu lajny
+        if car_angle != 0:
+            rotated_car = pygame.transform.rotate(car_surface, car_angle)
+            car_rect = rotated_car.get_rect(center=(car_x, car_y))
+            screen.blit(rotated_car, car_rect.topleft)
+        else:
+            # Vykreslení auta bez rotace
+            car_rect = car_surface.get_rect(center=(car_x, car_y))
+            screen.blit(car_surface, car_rect.topleft)
+        
+        # Vykreslíme šedou čáru pro debugování - ukazuje zjištěnou výšku lajny
+        pygame.draw.circle(screen, (255, 0, 0), (car_x, avg_line_height), 5)
         
         # Zobrazení rychlosti a stavu
         speed_text = small_font.render(f"Rychlost: {int(car_speed * 10)} km/h", True, WHITE)
@@ -569,7 +592,6 @@ def race_screen():
         
         pygame.display.update()
         clock.tick(FPS)
-                        # Umístění obrázků se zachováním původní struktury mřížky
     
 
 # Funkce pro bezpečné snížení počtu obrázků
