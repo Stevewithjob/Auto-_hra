@@ -29,7 +29,7 @@ debug_font = pygame.font.Font(None, 36)
 
 #písničky
 pisnicky = ["Bad_piggies_theme.mp3", "SIGMA-BOY-PHONK-REMIX-.mp3"]
-aktualni_pisnicka = 1
+aktualni_pisnicka = 0
 is_playing = True
 #správné načtení písniček
 Zvuk_ready = True
@@ -286,6 +286,20 @@ def race_screen():
     race_timer_active = False
     finish_celebration_timer = 0
     
+    # Parametry pro vykreslení tratě
+    track_color = (80, 80, 80)  # Šedá barva pro trať
+    track_thickness = 4  # Tloušťka čáry tratě
+    track_y = 600  # Y-souřadnice tratě (startuje na y=600)
+    
+    # Definice bodů tratě (x, y) - začíná na levém okraji obrazovky
+    track_points = []
+    
+    # Generování bodů tratě - základní rovná trať + náhodné zvlnění
+    for x in range(0, track_length + WIDTH, 50):
+        # Přidáme mírné náhodné zvlnění pro zajímavější trať
+        y_variation = random.randint(-20, 20) if x > WIDTH//2 else 0  # Začátek je rovný pro snazší start
+        track_points.append((x, track_y + y_variation))
+    
     # Načteme originální obrázek kola pro rotaci
     original_wheel = None
     try:
@@ -424,6 +438,27 @@ def race_screen():
                     # Zde by se mohlo načíst další závodní mapa nebo změnit obtížnost
                     print("Přechod na další mapu!")
         
+        # Vykreslení tratě (šedá čára)
+        for i in range(len(track_points) - 1):
+            # Výpočet aktuálních pozic na obrazovce s ohledem na posun závodní plochy
+            start_x = track_points[i][0] + závodní_plocha_x
+            start_y = track_points[i][1]
+            end_x = track_points[i+1][0] + závodní_plocha_x
+            end_y = track_points[i+1][1]
+            
+            # Vykreslíme pouze pokud je alespoň jeden bod viditelný na obrazovce
+            if (0 <= start_x <= WIDTH or 0 <= end_x <= WIDTH):
+                pygame.draw.line(screen, track_color, (start_x, start_y), (end_x, end_y), track_thickness)
+        
+        # Vykreslení cílové čáry
+        finish_x = finish_line_x + závodní_plocha_x
+        if 0 <= finish_x <= WIDTH:
+            pygame.draw.line(screen, (255, 0, 0), (finish_x, track_y - 50), (finish_x, track_y + 50), 5)
+            
+            # Přidáme text "CÍL" nad cílovou čárou
+            finish_text = small_font.render("CÍL", True, (255, 0, 0))
+            screen.blit(finish_text, (finish_x - 20, track_y - 75))
+        
         # Vykreslení auta (s efektem rotujících kol)
         for y in range(pocet_čtvercu_strana):
             for x in range(pocet_čtvercu_strana):
@@ -436,15 +471,14 @@ def race_screen():
                         
                         # Speciální zpracování pro kola (id 4) - rotace
                         if img_id == 4 and original_wheel:
-                            # Vytvoření rotované kopie kola
                             rotated_wheel = pygame.transform.rotate(original_wheel, wheel_rotation_angle)
-                            
+    
                             # Získání nového obdélníku rotovaného kola (aby bylo vystředěno)
-                            wheel_rect = rotated_wheel.get_rect(center=(screen_x + small_cell_size/2, 
-                                                                     screen_y + small_cell_size/2))
-                            
+                            wheel_rect = rotated_wheel.get_rect()
+                            wheel_rect.center = (screen_x + small_cell_size/2, screen_y + small_cell_size/2)
+    
                             # Vykreslení rotovaného kola
-                            screen.blit(rotated_wheel, wheel_rect.topleft)
+                            screen.blit(rotated_wheel, wheel_rect)
                         else:
                             # Standardní vykreslení ostatních obrázků
                             small_img = pygame.transform.scale(obrazky[img_id], (small_cell_size, small_cell_size))
