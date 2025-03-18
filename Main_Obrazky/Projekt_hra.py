@@ -401,7 +401,7 @@ def race_screen():
             # Změna výšky za posledních několik snímků
             height_diff = prev_line_heights[0] - prev_line_heights[-1]
             # Omezíme maximální úhel naklonění
-            car_angle = max(-15, min(15, height_diff * 0.5))
+            car_angle = max(-15, min(15, height_diff * 1.5))
         
         # Kontrola stisknutých kláves - jen pokud závod neskončil, máme motor, řidiče A KOLA
         if not race_completed and has_motor and has_driver and has_wheels:
@@ -432,7 +432,7 @@ def race_screen():
             else:
                 # Postupné zpomalení, když není stisknutá žádná klávesa
                 if car_speed > 0:
-                    car_speed -= 0.05
+                    car_speed -= 0.07
                     if car_speed < 0:
                         car_speed = 0
                 
