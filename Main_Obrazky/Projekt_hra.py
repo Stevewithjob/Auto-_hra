@@ -234,6 +234,15 @@ def race_screen():
         if has_driver:
             break
     
+    # Kontrola, zda auto má kola
+    has_wheels = False
+    wheel_positions = []
+    for y in range(pocet_čtvercu_strana):
+        for x in range(pocet_čtvercu_strana):
+            if 4 in race_grid[y][x]:  # ID 4 jsou kola
+                wheel_positions.append((x, y))
+                has_wheels = True
+    
     # Funkce pro detekci výšky šedé lajny na aktuální x-pozici
     def get_line_height(x_position):
         # Převod globální x-pozice na pozici v rámci obrázku závodní_plocha
@@ -261,17 +270,17 @@ def race_screen():
     car_y = 600  # Výchozí výška auta
     car_angle = 0  # Úhel naklonění auta
     
-    # Najdi pozice všech kol v mřížce
-    wheel_positions = []
+    # Najdi nejnižší komponentu v mřížce (ne jen kolo)
+    lowest_component = None
+    lowest_y = -1
+    
+    # Hledání nejnižší komponenty v mřížce
     for y in range(pocet_čtvercu_strana):
         for x in range(pocet_čtvercu_strana):
-            if 4 in race_grid[y][x]:  # ID 4 jsou kola
-                wheel_positions.append((x, y))
-    
-    # Najdi nejnižší pozici kola (kolo s největší y-souřadnicí)
-    lowest_wheel = None
-    if wheel_positions:
-        lowest_wheel = max(wheel_positions, key=lambda pos: pos[1])
+            if race_grid[y][x]:  # Pokud je v tomto poli jakýkoliv obrázek
+                if y > lowest_y:
+                    lowest_y = y
+                    lowest_component = (x, y)
     
     # Funkce pro kontrolu, zda kola dotýkají lajny
     def wheels_touch_ground():
@@ -328,6 +337,9 @@ def race_screen():
     # Sledování předchozích výšek lajny pro plynulý přechod
     prev_line_heights = [600] * 10
     
+    # Import math pro pokročilé výpočty
+    import math
+    
     while running:
         screen.fill(BLUE)  # Modrá barva pozadí pro závodní obrazovku
         screen.blit(závodní_plocha, (závodní_plocha_x, závodní_plocha_y))
@@ -369,19 +381,20 @@ def race_screen():
         # Vypočítáme průměrnou výšku pro plynulejší pohyb
         avg_line_height = sum(prev_line_heights) / len(prev_line_heights)
         
-        # Pokud máme nejnižší kolo, vypočítáme výšku auta tak, aby se toto kolo dotýkalo lajny
-        if lowest_wheel:
-            # Výpočet pozice středu auta tak, aby se nejnižší kolo dotýkalo lajny
-            wheel_x, wheel_y = lowest_wheel
-            # car_y je pozice středu auta, od které odečítáme, abychom dostali pozici kola
-            # small_cell_size je velikost jednoho pole, wheel_y je pozice kola v mřížce
-            target_car_y = avg_line_height - (wheel_y * small_cell_size + small_cell_size)
+        # Pokud máme nejnižší komponentu, vypočítáme výšku auta přesně tak, aby se tato komponenta dotýkala lajny
+        if lowest_component:
+            component_x, component_y = lowest_component
+            
+            # Vypočítáme pozici auta tak, aby spodní hrana nejnižší komponenty byla přesně na lajně
+            # Výpočet bere v úvahu pozici nejnižší komponenty vzhledem ke středu auta
+            offset_from_center = (component_y + 1) * small_cell_size - (pocet_čtvercu_strana * small_cell_size / 2)
+            target_car_y = avg_line_height - offset_from_center
         else:
-            # Pokud nemáme kola, použijeme výchozí logiku
+            # Pokud nemáme žádnou komponentu, použijeme výchozí logiku
             target_car_y = avg_line_height - small_cell_size * pocet_čtvercu_strana / 2
         
-        # Plynule přibližujeme auto k cílové výšce
-        car_y += (target_car_y - car_y) * 0.1
+        # Nyní přesně nastavíme pozici auta bez plynulého přechodu pro přesné umístění na lajně
+        car_y = target_car_y
         
         # Vypočítáme úhel naklonění auta podle sklonu lajny
         if len(prev_line_heights) > 2:
@@ -390,8 +403,8 @@ def race_screen():
             # Omezíme maximální úhel naklonění
             car_angle = max(-15, min(15, height_diff * 0.5))
         
-        # Kontrola stisknutých kláves - jen pokud závod neskončil, máme motor a řidiče
-        if not race_completed and has_motor and has_driver:
+        # Kontrola stisknutých kláves - jen pokud závod neskončil, máme motor, řidiče A KOLA
+        if not race_completed and has_motor and has_driver and has_wheels:
             if key[pygame.K_RIGHT]:
                 # Zrychlování
                 is_accelerating = True
@@ -438,8 +451,8 @@ def race_screen():
         if wheel_rotation_angle >= 360:
             wheel_rotation_angle %= 360
         
-        # Posunutí závodní plochy podle rychlosti, ale jen pokud jsme nedosáhli cíle a máme motor a řidiče
-        if not race_completed or závodní_plocha_x > finish_line_x:
+        # Posunutí závodní plochy podle rychlosti, ale jen pokud jsme nedosáhli cíle a máme motor, řidiče A KOLA
+        if (not race_completed or závodní_plocha_x > finish_line_x) and has_motor and has_driver and has_wheels:
             závodní_plocha_x -= car_speed
             
             # Zajistíme, že nepřejedeme za cílovou čáru
@@ -502,6 +515,13 @@ def race_screen():
                             small_img = pygame.transform.scale(obrazky[img_id], (small_cell_size, small_cell_size))
                             car_surface.blit(small_img, (local_x, local_y))
         
+        # Pokud máme úhel naklonění, aplikujeme korekci pozice podle úhlu
+        angle_correction = 0
+        if car_angle != 0:
+            # Korekce pozice pro naklonění - pozitivní úhel = nakloněné dopředu = vyšší pozice
+            angle_correction = math.sin(math.radians(car_angle)) * small_cell_size * 0.5
+            car_y -= angle_correction  # Přičtení korekce k y-pozici
+        
         # Rotujeme celé auto podle sklonu lajny
         if car_angle != 0:
             rotated_car = pygame.transform.rotate(car_surface, car_angle)
@@ -512,14 +532,37 @@ def race_screen():
             car_rect = car_surface.get_rect(center=(car_x, car_y))
             screen.blit(car_surface, car_rect.topleft)
         
-        # Vykreslíme šedou čáru pro debugování - ukazuje zjištěnou výšku lajny
+        # Vykreslíme šedou čáru pro debugování pouze pokud je v debug módu
         pygame.draw.circle(screen, (255, 0, 0), (car_x, avg_line_height), 5)
+        
+        # Pro každou komponentu vykreslíme bod kontaktu s povrchem (pro debugování)
+        # Zvýrazníme nejnižší komponentu červeným bodem
+        if lowest_component:
+            lowest_x, lowest_y = lowest_component
+            global_lowest_x = car_x + (lowest_x - pocet_čtvercu_strana//2) * small_cell_size
+            global_lowest_y = car_y + lowest_y * small_cell_size + small_cell_size
+            
+            # Vykreslíme červený bod pro nejnižší komponentu
+            pygame.draw.circle(screen, (255, 0, 0), (global_lowest_x, global_lowest_y), 5)
+            
+            # Zjistíme výšku lajny pod touto komponentou
+            component_line_height = get_line_height(global_lowest_x)
+            
+            # Vykreslíme modrou čáru mezi nejnižší komponentou a lajnou
+            pygame.draw.line(screen, (0, 0, 255), 
+                          (global_lowest_x, global_lowest_y), 
+                          (global_lowest_x, component_line_height), 2)
+            
+            # Vizualizace vzdálenosti mezi nejnižší komponentou a lajnou
+            distance = abs(global_lowest_y - component_line_height)
+            distance_text = small_font.render(f"Vzdálenost: {distance:.1f}", True, WHITE)
+            screen.blit(distance_text, (10, 150))
         
         # Pro každé kolo vykreslíme bod jeho kontaktu s povrchem (pro debugování)
         if wheel_positions:
             for wheel_x, wheel_y in wheel_positions:
                 global_wheel_x = car_x + (wheel_x - pocet_čtvercu_strana//2) * small_cell_size
-                global_wheel_y = car_y + wheel_y * small_cell_size - small_cell_size/2
+                global_wheel_y = car_y + wheel_y * small_cell_size + small_cell_size
                 # Zjistíme výšku lajny pod tímto kolem
                 wheel_line_height = get_line_height(global_wheel_x)
                 # Vykreslíme zelený bod v místě kontaktu kola s lajnou
@@ -546,7 +589,7 @@ def race_screen():
             next_level_button.is_hover(mouse_pos)
             next_level_button.draw(screen)
         else:
-            # Zobrazení upozornění, pokud nemáme motor nebo řidiče
+            # Zobrazení upozornění, pokud nemáme motor, řidiče nebo kola
             if not has_motor:
                 no_motor_text = font.render("CHYBÍ MOTOR!", True, random_color)
                 screen.blit(no_motor_text, (WIDTH//2 - no_motor_text.get_width()//2, 200))
@@ -558,6 +601,12 @@ def race_screen():
                 screen.blit(no_driver_text, (WIDTH//2 - no_driver_text.get_width()//2, 200))
                 
                 hint_text = small_font.render("Přidejte hlavu ke svému vozidlu", True, random_color)
+                screen.blit(hint_text, (WIDTH//2 - hint_text.get_width()//2, 250))
+            elif not has_wheels:
+                no_wheels_text = font.render("CHYBÍ KOLA!", True, random_color)
+                screen.blit(no_wheels_text, (WIDTH//2 - no_wheels_text.get_width()//2, 200))
+                
+                hint_text = small_font.render("Přidejte kola ke svému vozidlu pro pohyb", True, random_color)
                 screen.blit(hint_text, (WIDTH//2 - hint_text.get_width()//2, 250))
             else:
                 # Zobrazení stavu jízdy
