@@ -76,7 +76,7 @@ obrazky = {
 # Image selection
 current_image = 1
 
-závodní_plocha = load_and_scale_image("Trať2.png", (10000,800))
+závodní_plocha = load_and_scale_image("trat3.png", (10000,800))
 závodní_plocha_x = 0
 závodní_plocha_y = 0
 
@@ -317,8 +317,8 @@ def race_screen():
     is_braking = False
     
     # Parametry závodní trati
-    track_length = 10000 # Délka závodní trati (šířka obrázku závodní_plocha)
-    finish_line_x = -track_length + WIDTH  # X-pozice cílové čáry (konec trati)
+    track_length = 9500 # Délka závodní trati (šířka obrázku závodní_plocha)
+    finish_line_x = -track_length# + WIDTH  # X-pozice cílové čáry (konec trati)
     race_completed = False
     race_time = 0  # Čas závodu v sekundách
     race_timer_active = False
@@ -338,8 +338,7 @@ def race_screen():
     prev_line_heights = [600] * 10
     
     # Import math pro pokročilé výpočty
-    import math
-    
+
     while running:
         screen.fill(BLUE)  # Modrá barva pozadí pro závodní obrazovku
         screen.blit(závodní_plocha, (závodní_plocha_x, závodní_plocha_y))
