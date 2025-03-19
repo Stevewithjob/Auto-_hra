@@ -306,7 +306,7 @@ def race_screen():
     car_acceleration = 0.075
     car_deceleration = 0.2
     max_car_speed = 6
-    min_car_speed = 0
+    min_car_speed = -4  # Umožníme zápornou rychlost pro pohyb dozadu
     
     # Proměnné pro rotaci kol
     wheel_rotation_angle = 0
@@ -315,6 +315,8 @@ def race_screen():
     # Proměnné pro zobrazení stavu
     is_accelerating = False
     is_braking = False
+    is_rolling_back = False
+    is_rolling_forward = False
     
     # Parametry závodní trati
     track_length = 9500 # Délka závodní trati (šířka obrázku závodní_plocha)
@@ -337,7 +339,11 @@ def race_screen():
     # Sledování předchozích výšek lajny pro plynulý přechod
     prev_line_heights = [600] * 10
     
-    # Import math pro pokročilé výpočty
+    # Gravitační konstanta pro automatické rozjíždění na svahu
+    gravity_factor = 0.05
+    
+    # Hodnota pro rozlišení, kdy je auto na rovině (blízko nule)
+    flat_surface_threshold = 0.5
 
     while running:
         screen.fill(BLUE)  # Modrá barva pozadí pro závodní obrazovku
@@ -353,6 +359,8 @@ def race_screen():
         # Reset stavů
         is_accelerating = False
         is_braking = False
+        is_rolling_back = False
+        is_rolling_forward = False
         
         # Kontrola, zda jsme dosáhli cíle
         if závodní_plocha_x <= finish_line_x and not race_completed:
@@ -400,12 +408,30 @@ def race_screen():
             # Změna výšky za posledních několik snímků
             height_diff = prev_line_heights[0] - prev_line_heights[-1]
             # Omezíme maximální úhel naklonění
-            car_angle = max(-15, min(15, height_diff * 1.5))
+            car_angle = max(-35, min(35, height_diff * 1.5))
         
         # Kontrola stisknutých kláves - jen pokud závod neskončil, máme motor, řidiče A KOLA
         if not race_completed and has_motor and has_driver and has_wheels:
+            # Efekt gravitace na svahu - auto se rozjíždí automaticky při náklonu
+            if abs(car_angle) > flat_surface_threshold:  # Pokud jsme na svahu
+                if car_angle > flat_surface_threshold and not key[pygame.K_RIGHT]:  # Do kopce - auto se rozjíždí dozadu
+                    car_speed -= car_angle * gravity_factor
+                    is_rolling_back = True
+                    race_timer_active = True  # Spustíme časovač
+                elif car_angle < -flat_surface_threshold:  # Z kopce - auto se rozjíždí dopředu
+                    car_speed -= car_angle * gravity_factor  # Záporný úhel vytváří kladnou rychlost
+                    is_rolling_forward = True
+                    race_timer_active = True  # Spustíme časovač
+            
+            # Omezení rychlosti
+            if car_speed > max_car_speed:
+                car_speed = max_car_speed
+            elif car_speed < min_car_speed:
+                car_speed = min_car_speed
+            
+            # Aktivní ovládání uživatelem
             if key[pygame.K_RIGHT]:
-                # Zrychlování
+                # Zrychlování - funguje vždy
                 is_accelerating = True
                 race_timer_active = True  # Spustíme časovač při prvním zrychlení
                 
@@ -415,25 +441,34 @@ def race_screen():
                     car_speed = max_car_speed
                     
                 # Zvyšujeme rychlost rotace kol
-                wheel_rotation_speed = 10 + car_speed * 2  # Závisí na rychlosti auta
+                wheel_rotation_speed = 10 + abs(car_speed) * 2  # Závisí na rychlosti auta
             
             elif key[pygame.K_LEFT]:
-                # Brzdění
-                is_braking = True
-                if car_speed > min_car_speed:
-                    car_speed -= car_deceleration
-                if car_speed < min_car_speed:
-                    car_speed = min_car_speed
+                # Brzdění - funguje pouze pokud je auto na rovině
+                if abs(car_angle) <= flat_surface_threshold:
+                    is_braking = True
+                    if car_speed > 0:
+                        car_speed -= car_deceleration
+                    elif car_speed < 0:
+                        car_speed += car_deceleration
                     
-                # Kola se zpomalují při brzdění
-                wheel_rotation_speed = max(0, wheel_rotation_speed - 5)
+                    # Kola se zpomalují při brzdění
+                    wheel_rotation_speed = max(0, wheel_rotation_speed - 5)
+                else:
+                    # Když nejsme na rovině, brzdění nefunguje
+                    pass
             
             else:
-                # Postupné zpomalení, když není stisknutá žádná klávesa
-                if car_speed > 0:
-                    car_speed -= 0.07
-                    if car_speed < 0:
-                        car_speed = 0
+                # Postupné přirozené zpomalení na rovině, když není stisknutá žádná klávesa
+                if abs(car_angle) <= flat_surface_threshold:
+                    if car_speed > 0:
+                        car_speed -= 0.07
+                        if car_speed < 0:
+                            car_speed = 0
+                    elif car_speed < 0:
+                        car_speed += 0.07
+                        if car_speed > 0:
+                            car_speed = 0
                 
                 # Kola se postupně zpomalují
                 wheel_rotation_speed = max(0, wheel_rotation_speed - 1)
@@ -445,13 +480,20 @@ def race_screen():
                 # Kola se zastaví postupně
                 wheel_rotation_speed = max(0, wheel_rotation_speed - 2)
         
-        # Aktualizace úhlu rotace kol
-        wheel_rotation_angle -= wheel_rotation_speed
+        # Aktualizace úhlu rotace kol - směr rotace podle směru pohybu
+        if car_speed > 0:
+            wheel_rotation_angle -= wheel_rotation_speed  # Dopředu
+        else:
+            wheel_rotation_angle += wheel_rotation_speed  # Dozadu
+            
         if wheel_rotation_angle >= 360:
             wheel_rotation_angle %= 360
+        elif wheel_rotation_angle <= -360:
+            wheel_rotation_angle %= 360
         
-        # Posunutí závodní plochy podle rychlosti, ale jen pokud jsme nedosáhli cíle a máme motor, řidiče A KOLA
+        # Posunutí závodní plochy podle rychlosti
         if (not race_completed or závodní_plocha_x > finish_line_x) and has_motor and has_driver and has_wheels:
+            # Základní pohyb podle rychlosti auta
             závodní_plocha_x -= car_speed
             
             # Zajistíme, že nepřejedeme za cílovou čáru
@@ -571,6 +613,10 @@ def race_screen():
         speed_text = small_font.render(f"Rychlost: {int(car_speed * 10)} km/h", True, WHITE)
         screen.blit(speed_text, (10, 50))
         
+        # Zobrazení úhlu terénu
+        angle_text = small_font.render(f"Úhel: {car_angle:.2f}°", True, WHITE)
+        screen.blit(angle_text, (10, 80))
+        
         # Zobrazení času závodu
         time_text = small_font.render(f"Čas: {race_time:.2f} s", True, WHITE)
         screen.blit(time_text, (10, 120))
@@ -617,10 +663,16 @@ def race_screen():
                 elif is_braking:
                     status_text = "BRZDĚNÍ!"
                     status_color = RED
+                elif is_rolling_back:
+                    status_text = "COUVÁNÍ (SVAH)!"
+                    status_color = LIGHT_BLUE
+                elif is_rolling_forward:
+                    status_text = "ZRYCHLOVÁNÍ (SVAH)!"
+                    status_color = LIGHT_BLUE
                 
                 if status_text:
                     state_text = small_font.render(status_text, True, status_color)
-                    screen.blit(state_text, (10, 80))
+                    screen.blit(state_text, (WIDTH//2 - state_text.get_width()//2, 180))
         
         # Nadpis závodní obrazovky
         race_title = font.render("ZÁVOD 1.", False, random_color)
