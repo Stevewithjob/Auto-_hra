@@ -414,14 +414,15 @@ def race_screen():
         if not race_completed and has_motor and has_driver and has_wheels:
             # Efekt gravitace na svahu - auto se rozjíždí automaticky při náklonu
             if abs(car_angle) > flat_surface_threshold:  # Pokud jsme na svahu
-                if car_angle > flat_surface_threshold and not key[pygame.K_RIGHT]:  # Do kopce - auto se rozjíždí dozadu
-                    car_speed -= car_angle * gravity_factor
-                    is_rolling_back = True
-                    race_timer_active = True  # Spustíme časovač
-                elif car_angle < -flat_surface_threshold:  # Z kopce - auto se rozjíždí dopředu
-                    car_speed -= car_angle * gravity_factor  # Záporný úhel vytváří kladnou rychlost
-                    is_rolling_forward = True
-                    race_timer_active = True  # Spustíme časovač
+                if car_angle > flat_surface_threshold:  # Do kopce
+                    if not key[pygame.K_RIGHT]:# Pokud neakcelerujeme, auto se rozjíždí dozadu
+                        car_speed -= car_angle * gravity_factor
+                        is_rolling_back = True
+                        race_timer_active = True  # Spustíme časovač
+            elif car_angle < -flat_surface_threshold:  # Z kopce - auto se rozjíždí dopředu
+                car_speed -= car_angle * gravity_factor  # Záporný úhel vytváří kladnou rychlost
+                is_rolling_forward = True
+                race_timer_active = True  # Spustíme časovač
             
             # Omezení rychlosti
             if car_speed > max_car_speed:
