@@ -340,7 +340,7 @@ def race_screen():
     prev_line_heights = [600] * 10
     
     # Gravitační konstanta pro automatické rozjíždění na svahu
-    gravity_factor = 0.05
+    gravity_factor = 0.5
     
     # Hodnota pro rozlišení, kdy je auto na rovině (blízko nule)
     flat_surface_threshold = 0.5
@@ -561,7 +561,7 @@ def race_screen():
         if car_angle != 0:
             # Korekce pozice pro naklonění - pozitivní úhel = nakloněné dopředu = vyšší pozice
             angle_correction = math.sin(math.radians(car_angle)) * small_cell_size * 0.5
-            car_y -= angle_correction  # Přičtení korekce k y-pozici
+            car_y -= angle_correction# Přičtení korekce k y-pozici
         
         # Rotujeme celé auto podle sklonu lajny
         if car_angle != 0:
