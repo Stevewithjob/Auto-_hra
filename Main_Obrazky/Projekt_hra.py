@@ -410,24 +410,40 @@ def race_screen():
         
         # Vypočítáme úhel naklonění auta podle sklonu lajny
         if len(prev_line_heights) > 2:
-            # Změna výšky za posledních několik snímků
-            height_diff = prev_line_heights[0] - prev_line_heights[-1]
+            # Počítáme sklon z více bodů pro větší přesnost
+            terrain_slope = (prev_line_heights[-1] - prev_line_heights[0]) / len(prev_line_heights)
+    
+            # Základní naklonění auta (nezávislé na směru jízdy)
+            base_car_angle = -terrain_slope * 5
+    
             # Omezíme maximální úhel naklonění
-            car_angle = max(-35, min(35, height_diff * 1.5))
+            base_car_angle = max(-35, min(35, base_car_angle))
+    
+            # Vizualizace sklonu (pro debugování)
+            slope_text = small_font.render(f"Slope: {terrain_slope:.2f}, Angle: {base_car_angle:.2f}", True, WHITE)
+            screen.blit(slope_text, (10, 200))
+    
+            # Nastavíme úhel auta
+            car_angle = base_car_angle
+    
+            # Upravíme hodnotu gravity_factor podle sklonu terénu
+            # To zajistí, že gravitace bude působit odpovídajícím způsobem vzhledem k náklonu
+            gravity_factor = 0.1 * abs(terrain_slope)
         
         # Kontrola stisknutých kláves - jen pokud závod neskončil, máme motor, řidiče A KOLA
         if not race_completed and has_motor and has_driver and has_wheels:
             # Efekt gravitace na svahu - auto se rozjíždí automaticky při náklonu
-            if abs(car_angle) > flat_surface_threshold:  # Pokud jsme na svahu
-                if car_angle > flat_surface_threshold:  # Do kopce
-                    if not key[pygame.K_RIGHT]:# Pokud neakcelerujeme, auto se rozjíždí dozadu
-                        car_speed -= car_angle * gravity_factor
+            if abs(terrain_slope) > flat_surface_threshold:  # Pokud jsme na svahu
+                if terrain_slope > flat_surface_threshold:  # Klesání
+                    if not key[pygame.K_RIGHT]:  # Pokud neakcelerujeme
+                        car_speed += abs(terrain_slope) * gravity_factor
+                        is_rolling_forward = True
+                        race_timer_active = True
+                elif terrain_slope < -flat_surface_threshold:  # Stoupání
+                    if not key[pygame.K_RIGHT]:  # Pokud neakcelerujeme
+                        car_speed -= abs(terrain_slope) * gravity_factor
                         is_rolling_back = True
                         race_timer_active = True  # Spustíme časovač
-            elif car_angle < -flat_surface_threshold:  # Z kopce - auto se rozjíždí dopředu
-                car_speed -= car_angle * gravity_factor  # Záporný úhel vytváří kladnou rychlost
-                is_rolling_forward = True
-                race_timer_active = True  # Spustíme časovač
             
             # Omezení rychlosti
             if car_speed > max_car_speed:
