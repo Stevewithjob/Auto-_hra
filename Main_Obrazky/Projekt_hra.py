@@ -247,6 +247,8 @@ def race_screen():
             if 4 in race_grid[y][x]:  # ID 4 jsou kola
                 wheel_positions.append((x, y))
                 has_wheels = True
+                # Odstraníme kola z mřížky, budeme je vykreslovat zvlášť
+                race_grid[y][x].remove(4)
     
     # Funkce pro detekci výšky šedé lajny na aktuální x-pozici
     def get_line_height(x_position):
@@ -275,7 +277,7 @@ def race_screen():
     car_y = 600  # Výchozí výška auta
     car_angle = 0  # Úhel naklonění auta
     
-    # Najdi nejnižší komponentu v mřížce (ne jen kolo)
+    # Najdi nejnižší komponentu v mřížce (ne kolo, protože ta jsme odstranili)
     lowest_component = None
     lowest_y = -1
     
@@ -378,7 +380,7 @@ def race_screen():
             # Zkusíme přehrát zvuk vítězství, pokud je k dispozici
             if Zvuk_ready:
                 try:
-                    victory_sound = pygame.mixer.Sound("victory.wav")
+                    victory_sound = pygame.mixer.Sound("yayying.mp3")
                     victory_sound.play()
                 except:
                     print("Nelze přehrát zvuk vítězství")
@@ -418,10 +420,6 @@ def race_screen():
     
             # Omezíme maximální úhel naklonění
             base_car_angle = max(-35, min(35, base_car_angle))
-    
-            # Vizualizace sklonu (pro debugování)
-            slope_text = small_font.render(f"Slope: {terrain_slope:.2f}, Angle: {base_car_angle:.2f}", True, WHITE)
-            screen.blit(slope_text, (10, 200))
     
             # Nastavíme úhel auta
             car_angle = base_car_angle
@@ -549,45 +547,33 @@ def race_screen():
                     print(f"Přechod na mapu {aktualni_mapa}!")
 
         
-        # Vykreslení auta (s efektem rotujících kol)
+        # Vykreslení auta (bez kol, která budou samostatně na povrchu)
         # Vytvoříme povrch pro rotaci celého auta
         car_surface = pygame.Surface((pocet_čtvercu_strana * small_cell_size, 
                                      pocet_čtvercu_strana * small_cell_size), pygame.SRCALPHA)
         
         car_surface.fill((0, 0, 0, 0))  # Průhledný povrch
         
-        # Vykreslíme auto na car_surface
+        # Vykreslíme auto na car_surface (bez kol)
         for y in range(pocet_čtvercu_strana):
             for x in range(pocet_čtvercu_strana):
                 # Pokud má buňka nějaké obrázky
                 if race_grid[y][x]:
-                    for img_index, img_id in enumerate(race_grid[y][x]):
+                    for img_id in race_grid[y][x]:
                         # Umístění obrázků se zachováním původní struktury mřížky
                         local_x = x * small_cell_size
                         local_y = y * small_cell_size
                         
-                        # Speciální zpracování pro kola (id 4) - rotace
-                        if img_id == 4 and original_wheel:
-                            # Vytvoření rotované kopie kola
-                            rotated_wheel = pygame.transform.rotate(original_wheel, wheel_rotation_angle)
-                            
-                            # Získání nového obdélníku rotovaného kola (aby bylo vystředěno)
-                            wheel_rect = rotated_wheel.get_rect(center=(local_x + small_cell_size/2, 
-                                                                     local_y + small_cell_size/2))
-                            
-                            # Vykreslení rotovaného kola
-                            car_surface.blit(rotated_wheel, wheel_rect.topleft)
-                        else:
-                            # Standardní vykreslení ostatních obrázků
-                            small_img = pygame.transform.scale(obrazky[img_id], (small_cell_size, small_cell_size))
-                            car_surface.blit(small_img, (local_x, local_y))
+                        # Standardní vykreslení ostatních obrázků (ne kola)
+                        small_img = pygame.transform.scale(obrazky[img_id], (small_cell_size, small_cell_size))
+                        car_surface.blit(small_img, (local_x, local_y))
         
         # Pokud máme úhel naklonění, aplikujeme korekci pozice podle úhlu
         angle_correction = 0
         if car_angle != 0:
             # Korekce pozice pro naklonění - pozitivní úhel = nakloněné dopředu = vyšší pozice
             angle_correction = math.sin(math.radians(car_angle)) * small_cell_size * 0.5
-            car_y -= angle_correction# Přičtení korekce k y-pozici
+            car_y -= angle_correction  # Přičtení korekce k y-pozici
         
         # Rotujeme celé auto podle sklonu lajny
         if car_angle != 0:
@@ -599,11 +585,32 @@ def race_screen():
             car_rect = car_surface.get_rect(center=(car_x, car_y))
             screen.blit(car_surface, car_rect.topleft)
         
-        # Vykreslíme šedou čáru pro debugování pouze pokud je v debug módu
+        # Nyní samostatně vykreslíme rotující kola přímo na povrchu
+        if wheel_positions and original_wheel:
+            for wheel_x, wheel_y in wheel_positions:
+                # Vypočítat globální x-souřadnici tohoto kola na obrazovce
+                global_wheel_x = car_x + (wheel_x - pocet_čtvercu_strana//2) * small_cell_size
+                
+                # Získat výšku lajny pod tímto kolem (místo, kde má kolo skutečně být)
+                wheel_line_height = get_line_height(global_wheel_x)
+                
+                # Vytvořit rotované kolo
+                rotated_wheel = pygame.transform.rotate(original_wheel, wheel_rotation_angle)
+                
+                # Správně umístit kolo na povrch dráhy (wheel_line_height)
+                # Musíme odečíst polovinu výšky kola, aby bylo správně umístěno
+                wheel_rect = rotated_wheel.get_rect(center=(global_wheel_x, wheel_line_height - small_cell_size/2))
+                
+                # Vykreslení rotovaného kola na správnou pozici na povrchu
+                screen.blit(rotated_wheel, wheel_rect.topleft)
+                
+                # Pro vizualizaci můžeme stále kreslit zelené body v místech kontaktu
+                pygame.draw.circle(screen, (0, 255, 0), (global_wheel_x, wheel_line_height), 3)
+        
+        # Vykreslíme červený bod pro vizualizaci průměrné výšky povrchu
         pygame.draw.circle(screen, (255, 0, 0), (car_x, avg_line_height), 5)
         
-        # Pro každou komponentu vykreslíme bod kontaktu s povrchem (pro debugování)
-        # Zvýrazníme nejnižší komponentu červeným bodem
+        # Pro nejnižší komponentu vykreslíme bod kontaktu s povrchem (pro debugování)
         if lowest_component:
             lowest_x, lowest_y = lowest_component
             global_lowest_x = car_x + (lowest_x - pocet_čtvercu_strana//2) * small_cell_size
@@ -624,16 +631,6 @@ def race_screen():
             distance = abs(global_lowest_y - component_line_height)
             distance_text = small_font.render(f"Vzdálenost: {distance:.1f}", True, WHITE)
             screen.blit(distance_text, (10, 150))
-        
-        # Pro každé kolo vykreslíme bod jeho kontaktu s povrchem (pro debugování)
-        if wheel_positions:
-            for wheel_x, wheel_y in wheel_positions:
-                global_wheel_x = car_x + (wheel_x - pocet_čtvercu_strana//2) * small_cell_size
-                global_wheel_y = car_y + wheel_y * small_cell_size + small_cell_size
-                # Zjistíme výšku lajny pod tímto kolem
-                wheel_line_height = get_line_height(global_wheel_x)
-                # Vykreslíme zelený bod v místě kontaktu kola s lajnou
-                pygame.draw.circle(screen, (0, 255, 0), (global_wheel_x, wheel_line_height), 3)
         
         # Zobrazení rychlosti a stavu
         speed_text = small_font.render(f"Rychlost: {int(car_speed * 10)} km/h", True, WHITE)
@@ -663,46 +660,46 @@ def race_screen():
             # Zobrazíme tlačítko pro další mapu - pouze když je závod dokončen
             next_level_button.is_hover(mouse_pos)
             next_level_button.draw(screen)
+        
+        # Zobrazení upozornění, pokud nemáme motor, řidiče nebo kola
+        if not has_motor:
+            no_motor_text = font.render("CHYBÍ MOTOR!", True, random_color)
+            screen.blit(no_motor_text, (WIDTH//2 - no_motor_text.get_width()//2, 200))
             
-            # Zobrazení upozornění, pokud nemáme motor, řidiče nebo kola
-            if not has_motor:
-                no_motor_text = font.render("CHYBÍ MOTOR!", True, random_color)
-                screen.blit(no_motor_text, (WIDTH//2 - no_motor_text.get_width()//2, 200))
-                
-                hint_text = small_font.render("Přidejte motor ke svému vozidlu", True, random_color)
-                screen.blit(hint_text, (WIDTH//2 - hint_text.get_width()//2, 250))
-            elif not has_driver:
-                no_driver_text = font.render("CHYBÍ ŘIDIČ!", True, random_color)
-                screen.blit(no_driver_text, (WIDTH//2 - no_driver_text.get_width()//2, 200))
-                
-                hint_text = small_font.render("Přidejte hlavu ke svému vozidlu", True, random_color)
-                screen.blit(hint_text, (WIDTH//2 - hint_text.get_width()//2, 250))
-            elif not has_wheels:
-                no_wheels_text = font.render("CHYBÍ KOLA!", True, random_color)
-                screen.blit(no_wheels_text, (WIDTH//2 - no_wheels_text.get_width()//2, 200))
-                
-                hint_text = small_font.render("Přidejte kola ke svému vozidlu pro pohyb", True, random_color)
-                screen.blit(hint_text, (WIDTH//2 - hint_text.get_width()//2, 250))
-            else:
-                # Zobrazení stavu jízdy
-                status_text = ""
-                status_color = WHITE
-                if is_accelerating:
-                    status_text = "ZRYCHLOVÁNÍ!"
-                    status_color = GREEN
-                elif is_braking:
-                    status_text = "BRZDĚNÍ!"
-                    status_color = RED
-                elif is_rolling_back:
-                    status_text = "COUVÁNÍ (SVAH)!"
-                    status_color = LIGHT_BLUE
-                elif is_rolling_forward:
-                    status_text = "ZRYCHLOVÁNÍ (SVAH)!"
-                    status_color = LIGHT_BLUE
-                
-                if status_text:
-                    state_text = small_font.render(status_text, True, status_color)
-                    screen.blit(state_text, (WIDTH//2 - state_text.get_width()//2, 180))
+            hint_text = small_font.render("Přidejte motor ke svému vozidlu", True, random_color)
+            screen.blit(hint_text, (WIDTH//2 - hint_text.get_width()//2, 250))
+        elif not has_driver:
+            no_driver_text = font.render("CHYBÍ ŘIDIČ!", True, random_color)
+            screen.blit(no_driver_text, (WIDTH//2 - no_driver_text.get_width()//2, 200))
+            
+            hint_text = small_font.render("Přidejte hlavu ke svému vozidlu", True, random_color)
+            screen.blit(hint_text, (WIDTH//2 - hint_text.get_width()//2, 250))
+        elif not has_wheels:
+            no_wheels_text = font.render("CHYBÍ KOLA!", True, random_color)
+            screen.blit(no_wheels_text, (WIDTH//2 - no_wheels_text.get_width()//2, 200))
+            
+            hint_text = small_font.render("Přidejte kola ke svému vozidlu pro pohyb", True, random_color)
+            screen.blit(hint_text, (WIDTH//2 - hint_text.get_width()//2, 250))
+        else:
+            # Zobrazení stavu jízdy
+            status_text = ""
+            status_color = WHITE
+            if is_accelerating:
+                status_text = "ZRYCHLOVÁNÍ!"
+                status_color = GREEN
+            elif is_braking:
+                status_text = "BRZDĚNÍ!"
+                status_color = RED
+            elif is_rolling_back:
+                status_text = "COUVÁNÍ (SVAH)!"
+                status_color = LIGHT_BLUE
+            elif is_rolling_forward:
+                status_text = "ZRYCHLOVÁNÍ (SVAH)!"
+                status_color = LIGHT_BLUE
+            
+            if status_text:
+                state_text = small_font.render(status_text, True, status_color)
+                screen.blit(state_text, (WIDTH//2 - state_text.get_width()//2, 180))
         
         # Nadpis závodní obrazovky
         race_title = font.render(f"ZÁVOD - MAPA {aktualni_mapa}", False, random_color)
