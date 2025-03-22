@@ -414,7 +414,7 @@ def race_screen():
             terrain_slope = (prev_line_heights[-1] - prev_line_heights[0]) / len(prev_line_heights)
     
             # Základní naklonění auta (nezávislé na směru jízdy)
-            base_car_angle = -terrain_slope * 5
+            base_car_angle = -terrain_slope * 15
     
             # Omezíme maximální úhel naklonění
             base_car_angle = max(-35, min(35, base_car_angle))
