@@ -76,7 +76,12 @@ obrazky = {
 # Image selection
 current_image = 1
 
-závodní_plocha = load_and_scale_image("trat3.png", (10000,800))
+mapy = {
+    1: load_and_scale_image("trat3.png", (10000, 800)),
+    2: load_and_scale_image("trat2.png", (10000, 800))
+}
+aktualni_mapa = 1
+
 závodní_plocha_x = 0
 závodní_plocha_y = 0
 
@@ -196,7 +201,7 @@ def main_menu():
 
 def race_screen():
     # Obrazovka pro závodění
-    global závodní_plocha_x, závodní_plocha_y
+    global závodní_plocha_x, závodní_plocha_y, aktualni_mapa
     running = True
     back_button = Button("Zpět do Editoru", WIDTH/2 - 150, HEIGHT - 100, 300, 50, WHITE, GRAY)
     
@@ -249,14 +254,14 @@ def race_screen():
         local_x = int(x_position - závodní_plocha_x)
         
         # Kontrola, zda je x_position v platném rozsahu
-        if local_x < 0 or local_x >= závodní_plocha.get_width():
+        if local_x < 0 or local_x >= mapy[aktualni_mapa].get_width():
             return 600  # Výchozí výška
         
         # Projdeme sloupec pixelů odshora dolů, hledáme šedou barvu (lajnu)
-        for y in range(závodní_plocha.get_height()):
+        for y in range(mapy[aktualni_mapa].get_height()):
             # Získání barvy pixelu
             try:
-                color = závodní_plocha.get_at((local_x, y))
+                color = mapy[aktualni_mapa].get_at((local_x, y))
                 # Kontrola, zda je pixel šedý (přibližně)
                 if abs(color[0] - color[1]) < 10 and abs(color[1] - color[2]) < 10 and 50 < color[0] < 150:
                     return y + závodní_plocha_y  # Vrátíme globální y-pozici
@@ -319,8 +324,8 @@ def race_screen():
     is_rolling_forward = False
     
     # Parametry závodní trati
-    track_length = 9500 # Délka závodní trati (šířka obrázku závodní_plocha)
-    finish_line_x = -track_length# + WIDTH  # X-pozice cílové čáry (konec trati)
+    track_length = mapy[aktualni_mapa].get_width()  # Délka závodní trati (šířka aktuální mapy)
+    finish_line_x = -track_length + WIDTH  # X-pozice cílové čáry (konec trati)
     race_completed = False
     race_time = 0  # Čas závodu v sekundách
     race_timer_active = False
@@ -347,7 +352,7 @@ def race_screen():
 
     while running:
         screen.fill(BLUE)  # Modrá barva pozadí pro závodní obrazovku
-        screen.blit(závodní_plocha, (závodní_plocha_x, závodní_plocha_y))
+        screen.blit(mapy[aktualni_mapa], (závodní_plocha_x, závodní_plocha_y))
         random_color = rainbow_color_sin(pygame.time.get_ticks() / 1000)
         
         # Aktualizace časovače závodu
@@ -516,13 +521,17 @@ def race_screen():
                     running = False
                 # Kontrola kliknutí na tlačítko "Další Mapa" (pouze pokud je závod dokončen)
                 if race_completed and next_level_button.is_hover(mouse_pos):
-                    # Zde by se přešlo na další úroveň
+                    # Přepnutí na další mapu
                     závodní_plocha_x = 0
+                    aktualni_mapa = aktualni_mapa % len(mapy) + 1  # Cyklický přechod na další mapu
                     race_completed = False
                     race_time = 0
                     race_timer_active = False
-                    # Zde by se mohlo načíst další závodní mapa nebo změnit obtížnost
-                    print("Přechod na další mapu!")
+                    # Aktualizujeme délku trati a cílovou čáru podle nové mapy
+                    track_length = mapy[aktualni_mapa].get_width()
+                    finish_line_x = -track_length + WIDTH
+                    print(f"Přechod na mapu {aktualni_mapa}!")
+
         
         # Vykreslení auta (s efektem rotujících kol)
         # Vytvoříme povrch pro rotaci celého auta
@@ -622,6 +631,10 @@ def race_screen():
         time_text = small_font.render(f"Čas: {race_time:.2f} s", True, WHITE)
         screen.blit(time_text, (10, 120))
         
+        # Zobrazení aktuální mapy
+        map_text = small_font.render(f"Mapa: {aktualni_mapa}", True, WHITE)
+        screen.blit(map_text, (WIDTH - 120, 50))
+        
         # Zobrazení stavu závodu
         if race_completed:
             completed_text = font.render("CÍL DOSAŽEN!", True, (255, 215, 0))  # Zlatá barva
@@ -634,7 +647,7 @@ def race_screen():
             # Zobrazíme tlačítko pro další mapu - pouze když je závod dokončen
             next_level_button.is_hover(mouse_pos)
             next_level_button.draw(screen)
-        else:
+            
             # Zobrazení upozornění, pokud nemáme motor, řidiče nebo kola
             if not has_motor:
                 no_motor_text = font.render("CHYBÍ MOTOR!", True, random_color)
@@ -676,7 +689,7 @@ def race_screen():
                     screen.blit(state_text, (WIDTH//2 - state_text.get_width()//2, 180))
         
         # Nadpis závodní obrazovky
-        race_title = font.render("ZÁVOD 1.", False, random_color)
+        race_title = font.render(f"ZÁVOD - MAPA {aktualni_mapa}", False, random_color)
         title_rect = race_title.get_rect(center=(WIDTH/2, 50))
         screen.blit(race_title, title_rect)
         
