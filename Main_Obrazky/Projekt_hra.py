@@ -363,7 +363,7 @@ def race_screen():
         opponent_car_image = pygame.image.load("letadlo.png")  # Uživatel si tento obrázek vloží sám
         # Nastavení velikosti soupeřova auta - velikost podobná hráčově autu
         opponent_car_width = pocet_čtvercu_strana * small_cell_size * 1.4
-        opponent_car_height = pocet_čtvercu_strana * small_cell_size * 0.7
+        opponent_car_height = pocet_čtvercu_strana * small_cell_size
         opponent_car_image = pygame.transform.scale(opponent_car_image, (opponent_car_width, opponent_car_height))
     except pygame.error:
         # Pokud se obrázek nenačte, vytvoříme náhradní (červený čtverec)
@@ -619,7 +619,7 @@ def race_screen():
         opponent_terrain_height = get_line_height(opponent_screen_x)
 
         # Nastavení pozice a úhlu soupeřova auta
-        opponent_car_y = opponent_terrain_height - (pocet_čtvercu_strana * small_cell_size / 2)
+        opponent_car_y = opponent_terrain_height - (pocet_čtvercu_strana * small_cell_size / 2) - 50
         
         # ----- KONEC AKTUALIZACE SOUPEŘOVA AUTA -----
         
