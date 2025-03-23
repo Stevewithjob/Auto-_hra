@@ -277,6 +277,9 @@ def race_screen():
     car_y = 600  # Výchozí výška auta
     car_angle = 0  # Úhel naklonění auta
     
+    # Definovaná vzdálenost karosérie od kol (o kolik má být karosérie výš)
+    car_body_elevation = small_cell_size * 0.01  # Nastavení odsazení karosérie nad koly
+    
     # Najdi nejnižší komponentu v mřížce (ne kolo, protože ta jsme odstranili)
     lowest_component = None
     lowest_y = -1
@@ -395,19 +398,28 @@ def race_screen():
         # Vypočítáme průměrnou výšku pro plynulejší pohyb
         avg_line_height = sum(prev_line_heights) / len(prev_line_heights)
         
-        # Pokud máme nejnižší komponentu, vypočítáme výšku auta přesně tak, aby se tato komponenta dotýkala lajny
-        if lowest_component:
-            component_x, component_y = lowest_component
+        # Pokud máme kola, budeme kola umisťovat na lajnu a karosérii odsadíme nad ně
+        if wheel_positions:
+            # Najdeme nejnižší kolo (kolo s největší hodnotou y)
+            lowest_wheel_y = max([y for _, y in wheel_positions])
             
-            # Vypočítáme pozici auta tak, aby spodní hrana nejnižší komponenty byla přesně na lajně
-            # Výpočet bere v úvahu pozici nejnižší komponenty vzhledem ke středu auta
-            offset_from_center = (component_y + 1) * small_cell_size - (pocet_čtvercu_strana * small_cell_size / 2)
-            target_car_y = avg_line_height - offset_from_center
+            # Vypočítáme pozici kola (nejnižšího) tak, aby bylo na lajně
+            # Kola jsou na výšce lajny
+            wheel_offset_from_center = (lowest_wheel_y + 1) * small_cell_size - (pocet_čtvercu_strana * small_cell_size / 2)
+            target_wheels_y = avg_line_height - wheel_offset_from_center
+            
+            # Pozice karosérie je o něco výš než kola
+            target_car_y = target_wheels_y - car_body_elevation
         else:
-            # Pokud nemáme žádnou komponentu, použijeme výchozí logiku
-            target_car_y = avg_line_height - small_cell_size * pocet_čtvercu_strana / 2
+            # Pokud nemáme kola, použijeme standardní logiku
+            if lowest_component:
+                component_x, component_y = lowest_component
+                offset_from_center = (component_y + 1) * small_cell_size - (pocet_čtvercu_strana * small_cell_size / 2)
+                target_car_y = avg_line_height - offset_from_center
+            else:
+                target_car_y = avg_line_height - small_cell_size * pocet_čtvercu_strana / 2
         
-        # Nyní přesně nastavíme pozici auta bez plynulého přechodu pro přesné umístění na lajně
+        # Nastavíme pozici auta
         car_y = target_car_y
         
         # Vypočítáme úhel naklonění auta podle sklonu lajny
