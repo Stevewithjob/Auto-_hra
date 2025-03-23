@@ -278,7 +278,7 @@ def race_screen():
     car_angle = 0  # Úhel naklonění auta
     
     # Definovaná vzdálenost karosérie od kol (o kolik má být karosérie výš)
-    car_body_elevation = small_cell_size * 0.01  # Nastavení odsazení karosérie nad koly
+    car_body_elevation = small_cell_size * 0.3  # Nastavení odsazení karosérie nad koly
     
     # Najdi nejnižší komponentu v mřížce (ne kolo, protože ta jsme odstranili)
     lowest_component = None
@@ -354,6 +354,43 @@ def race_screen():
     
     # Hodnota pro rozlišení, kdy je auto na rovině (blízko nule)
     flat_surface_threshold = 0.5
+    
+    # ----- NOVĚ PŘIDANÝ KÓD PRO SOUPEŘOVO AUTO -----
+    
+    # Načtení obrázku soupeřova auta (předpokládáme, že bude přidán uživatelem)
+    opponent_car_image = None
+    try:
+        opponent_car_image = pygame.image.load("protihrac.png")  # Uživatel si tento obrázek vloží sám
+        # Nastavení velikosti soupeřova auta - velikost podobná hráčově autu
+        opponent_car_width = pocet_čtvercu_strana * small_cell_size
+        opponent_car_height = pocet_čtvercu_strana * small_cell_size
+        opponent_car_image = pygame.transform.scale(opponent_car_image, (opponent_car_width, opponent_car_height))
+    except pygame.error:
+        # Pokud se obrázek nenačte, vytvoříme náhradní (červený čtverec)
+        print("Nepodařilo se načíst obrázek soupeřova auta. Použije se náhradní.")
+        opponent_car_image = pygame.Surface((pocet_čtvercu_strana * small_cell_size, pocet_čtvercu_strana * small_cell_size))
+        opponent_car_image.fill(RED)  # Červené náhradní auto
+    
+    # Pozice a parametry soupeřova auta
+    opponent_car_x = WIDTH // 2  # Začíná na stejné horizontální pozici jako hráčovo auto
+    opponent_car_y = 600  # Výchozí výška soupeřova auta
+    opponent_car_angle = 0  # Úhel naklonění soupeřova auta
+    
+    # Rychlost soupeřova auta - závisí na aktuální mapě
+    opponent_base_speed = 4  # Odpovídá přibližně rychlosti 40 km/h (hráčovo auto má max_car_speed = 6 ~ 60 km/h)
+    opponent_max_speed = opponent_base_speed + (aktualni_mapa - 1)  # Zvýšení o 10 km/h (1 jednotku) na každé další mapě
+    opponent_current_speed = 0  # Aktuální rychlost soupeřova auta
+    opponent_acceleration = 0.08  # Trochu rychlejší zrychlení než hráč
+    
+    # Pozice soupeřova auta vzhledem k závodní ploše (offset)
+    opponent_position = 0  # Pozice na trati (0 = start, track_length = cíl)
+    opponent_finished = False  # Příznak, zda soupeř dokončil závod
+    opponent_finish_time = 0  # Čas soupeře v cíli
+    
+    # Výsledek závodu
+    race_result = None  # None = probíhá, "player" = vyhrál hráč, "opponent" = vyhrál soupeř, "tie" = remíza
+    
+    # ----- KONEC PŘIDANÉHO KÓDU PRO SOUPEŘOVO AUTO -----
 
     while running:
         screen.fill(BLUE)  # Modrá barva pozadí pro závodní obrazovku
@@ -381,12 +418,14 @@ def race_screen():
             finish_celebration_timer = 3  # 3 sekundy oslav
             
             # Zkusíme přehrát zvuk vítězství, pokud je k dispozici
-            if Zvuk_ready:
-                try:
-                    victory_sound = pygame.mixer.Sound("yayying.mp3")
-                    victory_sound.play()
-                except:
-                    print("Nelze přehrát zvuk vítězství")
+            if not opponent_finished:  # Pouze pokud soupeř ještě nedokončil závod
+                race_result = "player"  # Hráč vyhrál
+                if Zvuk_ready:
+                    try:
+                        victory_sound = pygame.mixer.Sound("yayying.mp3")
+                        victory_sound.play()
+                    except:
+                        print("Nelze přehrát zvuk vítězství")
         
         # Získání aktuální výšky lajny pod středem auta
         current_line_height = get_line_height(car_x)
@@ -532,6 +571,58 @@ def race_screen():
             if závodní_plocha_x < finish_line_x:
                 závodní_plocha_x = finish_line_x
         
+        # ----- NOVĚ PŘIDANÝ KÓD PRO AKTUALIZACI SOUPEŘOVA AUTA -----
+        
+        # Aktualizace maximální rychlosti soupeřova auta podle mapy
+        opponent_max_speed = opponent_base_speed + (aktualni_mapa - 1)  # Zvýšení o 1 jednotku (10 km/h) na každé další mapě
+        
+        # Pohyb soupeřova auta - pouze pokud závod probíhá a není dokončen
+        if race_timer_active and not opponent_finished:
+            # Zrychlení soupeřova auta (AI vždy zrychluje)
+            if opponent_current_speed < opponent_max_speed:
+                opponent_current_speed += opponent_acceleration
+                if opponent_current_speed > opponent_max_speed:
+                    opponent_current_speed = opponent_max_speed
+            
+            # Aktualizace pozice soupeřova auta na trati
+            opponent_position += opponent_current_speed
+            
+            # Kontrola, zda soupeř dosáhl cíle
+            if opponent_position >= track_length and not opponent_finished:
+                opponent_finished = True
+                opponent_finish_time = race_time
+                
+                # Určení výsledku závodu, pokud hráč již dokončil
+                if race_completed:
+                    race_result = "tie" if abs(race_time - opponent_finish_time) < 0.1 else "player"
+                else:
+                    race_result = "opponent"  # Soupeř vyhrál
+                    
+                    # Přehrajeme zvuk prohry, pokud je k dispozici
+                    if Zvuk_ready:
+                        try:
+                            defeat_sound = pygame.mixer.Sound("lose.mp3")  # Předpokládáme, že máte zvuk prohry
+                            defeat_sound.play()
+                        except:
+                            print("Nelze přehrát zvuk prohry")
+        
+        # Výpočet pozice soupeřova auta na obrazovce
+        opponent_screen_x = WIDTH // 2 + (opponent_position - (-závodní_plocha_x))
+
+        # Omezení, aby soupeř nebyl příliš daleko mimo obrazovku
+        if opponent_screen_x < -100:
+            opponent_screen_x = -100
+        elif opponent_screen_x > WIDTH + 100:
+            opponent_screen_x = WIDTH + 100
+
+        # Výpočet výšky soupeřova auta podle terénu (v místě jeho skutečné pozice)
+        opponent_terrain_height = get_line_height(opponent_screen_x)
+
+        # Nastavení pozice a úhlu soupeřova auta
+        opponent_car_y = opponent_terrain_height - (pocet_čtvercu_strana * small_cell_size / 2)
+        
+        # ----- KONEC AKTUALIZACE SOUPEŘOVA AUTA -----
+        
         mouse_pos = pygame.mouse.get_pos()
         
         for event in pygame.event.get():
@@ -549,10 +640,18 @@ def race_screen():
                 if race_completed and next_level_button.is_hover(mouse_pos):
                     # Přepnutí na další mapu
                     závodní_plocha_x = 0
-                    aktualni_mapa = aktualni_mapa % len(mapy) + 1  # Cyklický přechod na další mapu
+                    aktualni_mapa = (aktualni_mapa % len(mapy)) + 1  # Cyklický přechod na další mapu
                     race_completed = False
                     race_time = 0
                     race_timer_active = False
+                    
+                    # Reset soupeřova auta
+                    opponent_position = 0
+                    opponent_current_speed = 0
+                    opponent_finished = False
+                    opponent_finish_time = 0
+                    race_result = None
+                    
                     # Aktualizujeme délku trati a cílovou čáru podle nové mapy
                     track_length = mapy[aktualni_mapa].get_width()
                     finish_line_x = -track_length + WIDTH
@@ -597,6 +696,26 @@ def race_screen():
             car_rect = car_surface.get_rect(center=(car_x, car_y))
             screen.blit(car_surface, car_rect.topleft)
         
+        # ----- VYKRESLENÍ SOUPEŘOVA AUTA -----
+        
+        # Korekce pozice soupeřova auta podle úhlu (stejná logika jako pro hráčovo auto)
+        opponent_angle_correction = 0
+        if opponent_car_angle != 0:
+            opponent_angle_correction = math.sin(math.radians(opponent_car_angle)) * small_cell_size * 0.5
+            opponent_car_y -= opponent_angle_correction
+        
+        # Rotace a vykreslení soupeřova auta
+        if opponent_car_angle != 0:
+            rotated_opponent = pygame.transform.rotate(opponent_car_image, opponent_car_angle)
+            opponent_rect = rotated_opponent.get_rect(center=(opponent_screen_x, opponent_car_y))
+            screen.blit(rotated_opponent, opponent_rect.topleft)
+        else:
+            # Vykreslení soupeřova auta bez rotace
+            opponent_rect = opponent_car_image.get_rect(center=(opponent_screen_x, opponent_car_y))
+            screen.blit(opponent_car_image, opponent_rect.topleft)
+        
+        # ----- KONEC VYKRESLENÍ SOUPEŘOVA AUTA -----
+        
         # Nyní samostatně vykreslíme rotující kola přímo na povrchu
         if wheel_positions and original_wheel:
             for wheel_x, wheel_y in wheel_positions:
@@ -606,123 +725,136 @@ def race_screen():
                 # Získat výšku lajny pod tímto kolem (místo, kde má kolo skutečně být)
                 wheel_line_height = get_line_height(global_wheel_x)
                 
-                # Vytvořit rotované kolo
+                # Vypočítat y-pozici kola (má se dotýkat lajny)
+                global_wheel_y = wheel_line_height - small_cell_size / 2
+                
+                # Aplikace úhlu naklonění na pozici kola
+                if car_angle != 0:
+                    # Přidáme korekci pozice kol při naklonění
+                    wheel_x_offset = math.sin(math.radians(car_angle)) * small_cell_size * 0.5
+                    wheel_y_offset = math.cos(math.radians(car_angle)) * small_cell_size * 0.2
+                    # Kola posuneme podle úhlu naklonění
+                    global_wheel_y -= wheel_y_offset
+                
+                # Rotace kola kolem jeho středu
                 rotated_wheel = pygame.transform.rotate(original_wheel, wheel_rotation_angle)
+                wheel_rect = rotated_wheel.get_rect(center=(global_wheel_x, global_wheel_y))
                 
-                # Správně umístit kolo na povrch dráhy (wheel_line_height)
-                # Musíme odečíst polovinu výšky kola, aby bylo správně umístěno
-                wheel_rect = rotated_wheel.get_rect(center=(global_wheel_x, wheel_line_height - small_cell_size/2))
-                
-                # Vykreslení rotovaného kola na správnou pozici na povrchu
+                # Vykreslení kola
                 screen.blit(rotated_wheel, wheel_rect.topleft)
-                
-                # Pro vizualizaci můžeme stále kreslit zelené body v místech kontaktu
-                pygame.draw.circle(screen, (0, 255, 0), (global_wheel_x, wheel_line_height), 3)
         
-        # Vykreslíme červený bod pro vizualizaci průměrné výšky povrchu
-        pygame.draw.circle(screen, (255, 0, 0), (car_x, avg_line_height), 5)
+        # Vykreslení ukazatelů stavu
+        font = pygame.font.SysFont("Arial", 24)
         
-        # Pro nejnižší komponentu vykreslíme bod kontaktu s povrchem (pro debugování)
-        if lowest_component:
-            lowest_x, lowest_y = lowest_component
-            global_lowest_x = car_x + (lowest_x - pocet_čtvercu_strana//2) * small_cell_size
-            global_lowest_y = car_y + lowest_y * small_cell_size + small_cell_size
-            
-            # Vykreslíme červený bod pro nejnižší komponentu
-            pygame.draw.circle(screen, (255, 0, 0), (global_lowest_x, global_lowest_y), 5)
-            
-            # Zjistíme výšku lajny pod touto komponentou
-            component_line_height = get_line_height(global_lowest_x)
-            
-            # Vykreslíme modrou čáru mezi nejnižší komponentou a lajnou
-            pygame.draw.line(screen, (0, 0, 255), 
-                          (global_lowest_x, global_lowest_y), 
-                          (global_lowest_x, component_line_height), 2)
-            
-            # Vizualizace vzdálenosti mezi nejnižší komponentou a lajnou
-            distance = abs(global_lowest_y - component_line_height)
-            distance_text = small_font.render(f"Vzdálenost: {distance:.1f}", True, WHITE)
-            screen.blit(distance_text, (10, 150))
-        
-        # Zobrazení rychlosti a stavu
-        speed_text = small_font.render(f"Rychlost: {int(car_speed * 10)} km/h", True, WHITE)
-        screen.blit(speed_text, (10, 50))
-        
-        # Zobrazení úhlu terénu
-        angle_text = small_font.render(f"Úhel: {car_angle:.2f}°", True, WHITE)
-        screen.blit(angle_text, (10, 80))
+        # Zobrazení informací o rychlosti a času závodu
+        speed_text = font.render(f"Rychlost: {abs(car_speed * 10):.1f} km/h", True, WHITE)
+        screen.blit(speed_text, (20, 20))
         
         # Zobrazení času závodu
-        time_text = small_font.render(f"Čas: {race_time:.2f} s", True, WHITE)
-        screen.blit(time_text, (10, 120))
+        time_text = font.render(f"Čas: {race_time:.2f} s", True, WHITE)
+        screen.blit(time_text, (20, 50))
         
-        # Zobrazení aktuální mapy
-        map_text = small_font.render(f"Mapa: {aktualni_mapa}", True, WHITE)
-        screen.blit(map_text, (WIDTH - 120, 50))
-        
-        # Zobrazení stavu závodu
-        if race_completed:
-            completed_text = font.render("CÍL DOSAŽEN!", True, (255, 215, 0))  # Zlatá barva
-            screen.blit(completed_text, (WIDTH//2 - completed_text.get_width()//2, 200))
-            
-            # Pokud máme finální čas, zobrazíme ho
-            final_time_text = font.render(f"Váš čas: {race_time:.2f} s", True, (255, 215, 0))
-            screen.blit(final_time_text, (WIDTH//2 - final_time_text.get_width()//2, 250))
-            
-            # Zobrazíme tlačítko pro další mapu - pouze když je závod dokončen
-            next_level_button.is_hover(mouse_pos)
-            next_level_button.draw(screen)
-        
-        # Zobrazení upozornění, pokud nemáme motor, řidiče nebo kola
-        if not has_motor:
-            no_motor_text = font.render("CHYBÍ MOTOR!", True, random_color)
-            screen.blit(no_motor_text, (WIDTH//2 - no_motor_text.get_width()//2, 200))
-            
-            hint_text = small_font.render("Přidejte motor ke svému vozidlu", True, random_color)
-            screen.blit(hint_text, (WIDTH//2 - hint_text.get_width()//2, 250))
-        elif not has_driver:
-            no_driver_text = font.render("CHYBÍ ŘIDIČ!", True, random_color)
-            screen.blit(no_driver_text, (WIDTH//2 - no_driver_text.get_width()//2, 200))
-            
-            hint_text = small_font.render("Přidejte hlavu ke svému vozidlu", True, random_color)
-            screen.blit(hint_text, (WIDTH//2 - hint_text.get_width()//2, 250))
-        elif not has_wheels:
-            no_wheels_text = font.render("CHYBÍ KOLA!", True, random_color)
-            screen.blit(no_wheels_text, (WIDTH//2 - no_wheels_text.get_width()//2, 200))
-            
-            hint_text = small_font.render("Přidejte kola ke svému vozidlu pro pohyb", True, random_color)
-            screen.blit(hint_text, (WIDTH//2 - hint_text.get_width()//2, 250))
-        else:
-            # Zobrazení stavu jízdy
-            status_text = ""
-            status_color = WHITE
+        # Zobrazení stavu závodu (pouze pokud probíhá)
+        if race_timer_active and not race_completed:
+            status_surface = pygame.Surface((200, 30), pygame.SRCALPHA)
             if is_accelerating:
-                status_text = "ZRYCHLOVÁNÍ!"
-                status_color = GREEN
+                status_surface.fill((0, 255, 0, 150))  # Zelená - zrychlení
+                status_text = font.render("Zrychlování", True, BLACK)
             elif is_braking:
-                status_text = "BRZDĚNÍ!"
-                status_color = RED
+                status_surface.fill((255, 0, 0, 150))  # Červená - brzdění
+                status_text = font.render("Brzdění", True, WHITE)
             elif is_rolling_back:
-                status_text = "COUVÁNÍ (SVAH)!"
-                status_color = LIGHT_BLUE
+                status_surface.fill((255, 165, 0, 150))  # Oranžová - couvání
+                status_text = font.render("Couvání", True, BLACK)
             elif is_rolling_forward:
-                status_text = "ZRYCHLOVÁNÍ (SVAH)!"
-                status_color = LIGHT_BLUE
+                status_surface.fill((0, 191, 255, 150))  # Modrá - setrvačnost
+                status_text = font.render("Setrvačnost", True, BLACK)
+            else:
+                status_surface.fill((128, 128, 128, 150))  # Šedá - stání
+                status_text = font.render("Stání", True, WHITE)
+                
+            screen.blit(status_surface, (WIDTH - 220, 20))
+            screen.blit(status_text, (WIDTH - 210, 25))
+        
+        # Zobrazení ukazatele pozice na trati
+        progress_percentage = min(100, max(0, ((-závodní_plocha_x) / track_length) * 100))
+        
+        # Ukazatel průběhu - pozadí
+        pygame.draw.rect(screen, (100, 100, 100), (WIDTH // 2 - 150, 20, 300, 20))
+        # Ukazatel průběhu - vpředu (vyplněno podle postupu)
+        pygame.draw.rect(screen, GREEN, (WIDTH // 2 - 150, 20, int(300 * progress_percentage / 100), 20))
+        # Text průběhu
+        progress_text = font.render(f"{progress_percentage:.1f}%", True, WHITE)
+        screen.blit(progress_text, (WIDTH // 2 - progress_text.get_width() // 2, 45))
+        
+        # Zobrazení informací o soupeři
+        opponent_progress = min(100, max(0, (opponent_position / track_length) * 100))
+        
+        # Text o pozici soupeře
+        opponent_text = font.render(f"Soupeř: {opponent_progress:.1f}%", True, RED)
+        screen.blit(opponent_text, (WIDTH // 2 - 150, 70))
+        
+        # Vykreslení pozice soupeře na ukazateli průběhu
+        opponent_marker_x = WIDTH // 2 - 150 + int(300 * opponent_progress / 100)
+        pygame.draw.circle(screen, RED, (opponent_marker_x, 20 + 10), 10)
+        
+        # Zobrazení výsledku závodu (pokud dokončen)
+        if race_completed or opponent_finished:
+            result_text = None
+            if race_result == "player":
+                result_text = font.render("Vítězství! Porazil jsi soupeře!", True, GREEN)
+            elif race_result == "opponent":
+                result_text = font.render("Prohra! Soupeř byl rychlejší.", True, RED)
+            elif race_result == "tie":
+                result_text = font.render("Remíza! Dorazili jste současně.", True, BLUE)
             
-            if status_text:
-                state_text = small_font.render(status_text, True, status_color)
-                screen.blit(state_text, (WIDTH//2 - state_text.get_width()//2, 180))
+            if result_text:
+                result_rect = result_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 60))
+                # Pozadí pro text výsledku
+                bg_rect = pygame.Rect(result_rect.left - 10, result_rect.top - 10, 
+                                      result_rect.width + 20, result_rect.height + 20)
+                pygame.draw.rect(screen, (0, 0, 0, 200), bg_rect)
+                screen.blit(result_text, result_rect)
+                
+                # Zobrazení času závodu
+                time_result = font.render(f"Tvůj čas: {race_time:.2f} s", True, WHITE)
+                time_rect = time_result.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 20))
+                screen.blit(time_result, time_rect)
+                
+                # Zobrazení času soupeře (pokud dokončil)
+                if opponent_finished:
+                    opponent_time_result = font.render(f"Čas soupeře: {opponent_finish_time:.2f} s", True, RED)
+                    opponent_time_rect = opponent_time_result.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 20))
+                    screen.blit(opponent_time_result, opponent_time_rect)
         
-        # Nadpis závodní obrazovky
-        race_title = font.render(f"ZÁVOD - MAPA {aktualni_mapa}", False, random_color)
-        title_rect = race_title.get_rect(center=(WIDTH/2, 50))
-        screen.blit(race_title, title_rect)
+        # Zobrazení zprávy pokud chybí motor, řidič nebo kola
+        if not has_motor or not has_driver or not has_wheels:
+            warning_text = None
+            if not has_motor:
+                warning_text = "VAROVÁNÍ: Auto nemá motor! Přidej motor v editoru."
+            elif not has_driver:
+                warning_text = "VAROVÁNÍ: Auto nemá řidiče! Přidej řidiče v editoru."
+            elif not has_wheels:
+                warning_text = "VAROVÁNÍ: Auto nemá kola! Přidej kola v editoru."
+            
+            if warning_text:
+                warning_font = pygame.font.SysFont("Arial", 30)
+                warning_surface = warning_font.render(warning_text, True, RED)
+                warning_rect = warning_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+                # Pozadí pro varování
+                bg_rect = pygame.Rect(warning_rect.left - 10, warning_rect.top - 10, 
+                                     warning_rect.width + 20, warning_rect.height + 20)
+                pygame.draw.rect(screen, (0, 0, 0, 200), bg_rect)
+                screen.blit(warning_surface, warning_rect)
         
-        # Kontrola tlačítka
-        back_button.is_hover(mouse_pos)
+        # Vykreslení tlačítka zpět
         back_button.draw(screen)
         
-        pygame.display.update()
+        # Vykreslení tlačítka pro další mapu (viditelné pouze po dokončení závodu)
+        if race_completed:
+            next_level_button.draw(screen)
+        
+        pygame.display.flip()
         clock.tick(FPS)
     
 
