@@ -360,10 +360,10 @@ def race_screen():
     # Načtení obrázku soupeřova auta (předpokládáme, že bude přidán uživatelem)
     opponent_car_image = None
     try:
-        opponent_car_image = pygame.image.load("protihrac.png")  # Uživatel si tento obrázek vloží sám
+        opponent_car_image = pygame.image.load("letadlo.png")  # Uživatel si tento obrázek vloží sám
         # Nastavení velikosti soupeřova auta - velikost podobná hráčově autu
-        opponent_car_width = pocet_čtvercu_strana * small_cell_size
-        opponent_car_height = pocet_čtvercu_strana * small_cell_size
+        opponent_car_width = pocet_čtvercu_strana * small_cell_size * 1.4
+        opponent_car_height = pocet_čtvercu_strana * small_cell_size * 0.7
         opponent_car_image = pygame.transform.scale(opponent_car_image, (opponent_car_width, opponent_car_height))
     except pygame.error:
         # Pokud se obrázek nenačte, vytvoříme náhradní (červený čtverec)
