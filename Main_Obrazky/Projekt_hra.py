@@ -77,8 +77,11 @@ obrazky = {
 current_image = 1
 
 mapy = {
-    1: load_and_scale_image("trat3.png", (10000, 800)),
-    2: load_and_scale_image("trat2.png", (10000, 800))
+    1: load_and_scale_image("trat1.png", (10000, 800)),
+    2: load_and_scale_image("trat2.png", (10000, 800)),
+    3: load_and_scale_image("trat3.png", (10000, 800)),
+    4: load_and_scale_image("trat4.png", (10000, 800)),
+    5: load_and_scale_image("trat5.png", (10000, 800)),
 }
 aktualni_mapa = 1
 
@@ -647,7 +650,7 @@ def race_screen():
                 if upgrade_button.is_hover(mouse_pos):
                     if skore >= 10:
                         skore -= 10
-                        max_car_speed += 1
+                        max_car_speed += 0.7
                     else:
                         print("Nedostatek skóre pro upgrade")
                 # Kontrola kliknutí na tlačítko "Další Mapa" (pouze pokud je závod dokončen)
