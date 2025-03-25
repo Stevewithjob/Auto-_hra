@@ -208,6 +208,7 @@ def race_screen():
     # Nové tlačítko pro další mapu - bude viditelné až po dokončení závodu
     next_level_button = Button("Další Mapa", WIDTH - 150, HEIGHT//2, 140, 50, GREEN, (50, 255, 50))
     
+    upgrade_button = Button("Upgrade",WIDTH - 150, 100, 120, 40, BLUE, LIGHT_BLUE)
     # Definuj rozměry pro menší obrázky
     small_cell_size = 30  # Menší velikost obrázků
     
@@ -389,6 +390,7 @@ def race_screen():
     
     # Výsledek závodu
     race_result = None  # None = probíhá, "player" = vyhrál hráč, "opponent" = vyhrál soupeř, "tie" = remíza
+    skore = 0
     
     # ----- KONEC PŘIDANÉHO KÓDU PRO SOUPEŘOVO AUTO -----
 
@@ -412,10 +414,12 @@ def race_screen():
         # Kontrola, zda jsme dosáhli cíle
         if závodní_plocha_x <= finish_line_x and not race_completed:
             race_completed = True
+            skore += 5
             car_speed = 0
             wheel_rotation_speed = 0
             # Spustíme časovač pro oslavnou animaci
-            finish_celebration_timer = 3  # 3 sekundy oslav
+            finish_celebration_timer = 3# 3 sekundy oslav
+            
             
             # Zkusíme přehrát zvuk vítězství, pokud je k dispozici
             if not opponent_finished:  # Pouze pokud soupeř ještě nedokončil závod
@@ -430,6 +434,9 @@ def race_screen():
         # Získání aktuální výšky lajny pod středem auta
         current_line_height = get_line_height(car_x)
         
+        font = pygame.font.Font(None, 36)
+        skore_text = font.render(str(skore), True, RED)
+        screen.blit(skore_text, (WIDTH - 50, 70))
         # Přidáme aktuální výšku do seznamu předchozích výšek a odstraníme nejstarší
         prev_line_heights.append(current_line_height)
         prev_line_heights.pop(0)
@@ -636,6 +643,13 @@ def race_screen():
                 if back_button.is_hover(mouse_pos):
                     závodní_plocha_x = 0
                     running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if upgrade_button.is_hover(mouse_pos):
+                    if skore >= 10:
+                        skore -= 10
+                        max_car_speed += 1
+                    else:
+                        print("Nedostatek skóre pro upgrade")
                 # Kontrola kliknutí na tlačítko "Další Mapa" (pouze pokud je závod dokončen)
                 if race_completed and next_level_button.is_hover(mouse_pos):
                     # Přepnutí na další mapu
@@ -685,7 +699,6 @@ def race_screen():
             # Korekce pozice pro naklonění - pozitivní úhel = nakloněné dopředu = vyšší pozice
             angle_correction = math.sin(math.radians(car_angle)) * small_cell_size * 0.5
             car_y -= angle_correction  # Přičtení korekce k y-pozici
-        
         # Rotujeme celé auto podle sklonu lajny
         if car_angle != 0:
             rotated_car = pygame.transform.rotate(car_surface, car_angle)
@@ -715,7 +728,8 @@ def race_screen():
             screen.blit(opponent_car_image, opponent_rect.topleft)
         
         # ----- KONEC VYKRESLENÍ SOUPEŘOVA AUTA -----
-        
+            
+            
         # Nyní samostatně vykreslíme rotující kola přímo na povrchu
         if wheel_positions and original_wheel:
             for wheel_x, wheel_y in wheel_positions:
@@ -753,6 +767,8 @@ def race_screen():
         # Zobrazení času závodu
         time_text = font.render(f"Čas: {race_time:.2f} s", True, WHITE)
         screen.blit(time_text, (20, 50))
+        
+        upgrade_button.is_hover(mouse_pos)
         
         # Zobrazení stavu závodu (pouze pokud probíhá)
         if race_timer_active and not race_completed:
@@ -849,6 +865,7 @@ def race_screen():
         
         # Vykreslení tlačítka zpět
         back_button.draw(screen)
+        upgrade_button.draw(screen)
         
         # Vykreslení tlačítka pro další mapu (viditelné pouze po dokončení závodu)
         if race_completed:
